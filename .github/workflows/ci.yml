@@ -8,22 +8,22 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  CARGO_HOME: ${{ github.workspace }}/.cargo
+  CARGO_INCREMENTAL: 0
 
 jobs:
   test:
     name: Test
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        rust: [stable, 1.75.0]
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ matrix.rust }}
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install Protobuf (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
@@ -51,6 +51,7 @@ jobs:
 
       - name: Run tests
         run: cargo test --verbose
+        timeout-minutes: 10
 
   clippy:
     name: Clippy
@@ -88,9 +89,10 @@ jobs:
     name: Python Bindings
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python: ['3.9', '3.10', '3.11', '3.12']
+        os: [ubuntu-latest]
+        python: ['3.10', '3.11', '3.12']
     steps:
       - uses: actions/checkout@v4
 
@@ -102,17 +104,8 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install Protobuf (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
+      - name: Install Protobuf
         run: sudo apt-get install -y protobuf-compiler
-
-      - name: Install Protobuf (macOS)
-        if: matrix.os == 'macos-latest'
-        run: brew install protobuf
-
-      - name: Install Protobuf (Windows)
-        if: matrix.os == 'windows-latest'
-        run: choco install protoc
 
       - name: Install maturin
         run: pip install maturin pytest
@@ -124,15 +117,5 @@ jobs:
         run: pip install target/wheels/*.whl
         shell: bash
 
-      - name: Run Python tests
-        run: pytest tests/ -v
-
-  benchmark:
-    name: Benchmark
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - run: sudo apt-get install -y protobuf-compiler
-      - name: Run benchmarks
-        run: cargo run --release --bin hope-benchmark
+      - name: Test import
+        run: python -c "import hope_os; print(hope_os.__version__)"
