@@ -1,0 +1,949 @@
+syntax = "proto3";
+
+package hope;
+
+// ============================================================================
+// COMMON TYPES (google.protobuf helyett)
+// ============================================================================
+
+// Üres kérés (Empty helyett)
+message EmptyRequest {}
+
+// Időbélyeg (Timestamp helyett - Unix milliseconds)
+message Timestamp {
+    int64 seconds = 1;
+    int32 nanos = 2;
+}
+
+// ============================================================================
+// HOPE SERVICE - Fő interfész
+// ============================================================================
+
+service HopeService {
+    // Beszélgetés
+    rpc Chat(ChatRequest) returns (ChatResponse);
+
+    // Streaming chat
+    rpc StreamChat(ChatRequest) returns (stream ChatResponse);
+
+    // Állapot lekérdezés
+    rpc GetStatus(EmptyRequest) returns (StatusResponse);
+
+    // Életjel
+    rpc Heartbeat(EmptyRequest) returns (HeartbeatResponse);
+}
+
+message ChatRequest {
+    string message = 1;
+    string context = 2;
+    map<string, string> metadata = 3;
+}
+
+message ChatResponse {
+    string response = 1;
+    string emotion = 2;
+    double confidence = 3;
+    repeated string thoughts = 4;
+    map<string, string> metadata = 5;
+}
+
+message StatusResponse {
+    string status = 1;
+    string version = 2;
+    int64 uptime_seconds = 3;
+    int32 active_modules = 4;
+    int32 total_skills = 5;
+    map<string, string> modules = 6;
+}
+
+message HeartbeatResponse {
+    bool alive = 1;
+    Timestamp timestamp = 2;
+    string status = 3;
+}
+
+// ============================================================================
+// SKILL SERVICE - 155 skill kezelése
+// ============================================================================
+
+service SkillService {
+    // Skillek listázása
+    rpc ListSkills(ListSkillsRequest) returns (ListSkillsResponse);
+
+    // Egy skill lekérdezése
+    rpc GetSkill(GetSkillRequest) returns (SkillInfo);
+
+    // Skill meghívása
+    rpc InvokeSkill(InvokeSkillRequest) returns (InvokeSkillResponse);
+
+    // Streaming skill output
+    rpc StreamSkillOutput(InvokeSkillRequest) returns (stream SkillOutput);
+}
+
+message ListSkillsRequest {
+    string category = 1;
+    string search = 2;
+    int32 limit = 3;
+    int32 offset = 4;
+}
+
+message ListSkillsResponse {
+    repeated SkillInfo skills = 1;
+    int32 total = 2;
+}
+
+message SkillInfo {
+    string name = 1;
+    string description = 2;
+    string category = 3;
+    repeated string tags = 4;
+    string version = 5;
+    bool enabled = 6;
+}
+
+message GetSkillRequest {
+    string name = 1;
+}
+
+message InvokeSkillRequest {
+    string name = 1;
+    string input = 2;
+    map<string, string> params = 3;
+}
+
+message InvokeSkillResponse {
+    bool success = 1;
+    string output = 2;
+    string error = 3;
+    double execution_time = 4;
+}
+
+message SkillOutput {
+    string chunk = 1;
+    bool done = 2;
+    string error = 3;
+}
+
+// ============================================================================
+// MEMORY SERVICE - 6 rétegű memória
+// ============================================================================
+
+service MemoryService {
+    // Emlék mentése
+    rpc Remember(RememberRequest) returns (RememberResponse);
+
+    // Emlék keresése
+    rpc Recall(RecallRequest) returns (RecallResponse);
+
+    // Szemantikus keresés
+    rpc Search(SearchRequest) returns (SearchResponse);
+
+    // Memória konszolidáció
+    rpc Consolidate(ConsolidateRequest) returns (ConsolidateResponse);
+
+    // Working memory lekérdezése
+    rpc GetWorkingMemory(EmptyRequest) returns (WorkingMemoryResponse);
+
+    // Személy lekérdezése
+    rpc GetPerson(GetPersonRequest) returns (PersonInfo);
+
+    // Asszociáció létrehozása
+    rpc CreateAssociation(CreateAssociationRequest) returns (AssociationResponse);
+
+    // Asszociációk lekérdezése
+    rpc GetAssociations(GetAssociationsRequest) returns (AssociationsResponse);
+}
+
+message RememberRequest {
+    string content = 1;
+    string layer = 2;  // working, short_term, long_term, emotional, relational, associative
+    double importance = 3;
+    string emotional_tag = 4;
+    map<string, string> metadata = 5;
+}
+
+message RememberResponse {
+    string id = 1;
+    bool success = 2;
+    string message = 3;
+}
+
+message RecallRequest {
+    string query = 1;
+    string layer = 2;
+    int32 limit = 3;
+    double min_importance = 4;
+}
+
+message RecallResponse {
+    repeated MemoryItem memories = 1;
+    int32 total = 2;
+}
+
+message MemoryItem {
+    string id = 1;
+    string content = 2;
+    string layer = 3;
+    double importance = 4;
+    string emotional_tag = 5;
+    Timestamp created_at = 6;
+    int32 access_count = 7;
+}
+
+message SearchRequest {
+    string query = 1;
+    repeated string layers = 2;
+    int32 limit = 3;
+    double threshold = 4;
+}
+
+message SearchResponse {
+    repeated SearchResult results = 1;
+}
+
+message SearchResult {
+    MemoryItem memory = 1;
+    double similarity = 2;
+}
+
+message ConsolidateRequest {
+    string source_layer = 1;
+    string target_layer = 2;
+    double threshold = 3;
+}
+
+message ConsolidateResponse {
+    int32 consolidated = 1;
+    string message = 2;
+}
+
+message WorkingMemoryResponse {
+    map<string, string> items = 1;
+    int32 capacity = 2;
+    int32 used = 3;
+}
+
+message GetPersonRequest {
+    string name = 1;
+}
+
+message PersonInfo {
+    string name = 1;
+    string relationship = 2;
+    repeated string traits = 3;
+    repeated string memories = 4;
+    Timestamp last_interaction = 5;
+}
+
+message CreateAssociationRequest {
+    string source = 1;
+    string target = 2;
+    string relation = 3;
+    double strength = 4;
+}
+
+message AssociationResponse {
+    string id = 1;
+    bool success = 2;
+}
+
+message GetAssociationsRequest {
+    string concept = 1;
+    int32 depth = 2;
+    int32 limit = 3;
+}
+
+message AssociationsResponse {
+    repeated Association associations = 1;
+}
+
+message Association {
+    string source = 1;
+    string target = 2;
+    string relation = 3;
+    double strength = 4;
+}
+
+// ============================================================================
+// COGNITIVE SERVICE - Gondolkodás
+// ============================================================================
+
+service CognitiveService {
+    // Gondolkodás
+    rpc Think(ThinkRequest) returns (ThinkResponse);
+
+    // Érzelmek beállítása (21 dimenzió)
+    rpc Feel(FeelRequest) returns (FeelResponse);
+
+    // Kognitív állapot lekérdezése
+    rpc GetCognitiveState(EmptyRequest) returns (CognitiveStateResponse);
+
+    // Rezonancia
+    rpc Resonate(ResonateRequest) returns (ResonateResponse);
+
+    // Gondolat stream
+    rpc StreamThoughts(ThinkRequest) returns (stream ThoughtChunk);
+}
+
+message ThinkRequest {
+    string input = 1;
+    bool deep = 2;
+    string context = 3;
+    repeated string focus_areas = 4;
+}
+
+message ThinkResponse {
+    string thought = 1;
+    repeated string reasoning_steps = 2;
+    double confidence = 3;
+    map<string, double> emotions = 4;
+}
+
+message FeelRequest {
+    map<string, double> emotions = 1;  // 21 dimenziós érzelem
+    string trigger = 2;
+}
+
+message FeelResponse {
+    bool success = 1;
+    string dominant_emotion = 2;
+    double intensity = 3;
+}
+
+message CognitiveStateResponse {
+    string current_focus = 1;
+    map<string, double> emotions = 2;
+    double energy = 3;
+    double clarity = 4;
+    repeated string active_thoughts = 5;
+    string mood = 6;
+}
+
+message ResonateRequest {
+    string input = 1;
+    string mode = 2;  // empathy, analysis, creative
+}
+
+message ResonateResponse {
+    string resonance = 1;
+    map<string, double> emotional_response = 2;
+    repeated string insights = 3;
+}
+
+message ThoughtChunk {
+    string thought = 1;
+    string type = 2;  // reasoning, emotion, insight
+    bool done = 3;
+}
+
+// ============================================================================
+// ACTION SERVICE - SHP protokoll
+// ============================================================================
+
+service ActionService {
+    // Akció végrehajtása
+    rpc Execute(ExecuteRequest) returns (ExecuteResponse);
+
+    // Ellenőrzés
+    rpc Verify(VerifyRequest) returns (VerifyResponse);
+
+    // Aláírás (Ed25519)
+    rpc Sign(SignRequest) returns (SignResponse);
+
+    // SHP packet küldése
+    rpc SendPacket(PacketRequest) returns (PacketResponse);
+
+    // Packet stream
+    rpc StreamPackets(StreamPacketsRequest) returns (stream Packet);
+}
+
+message ExecuteRequest {
+    string action_type = 1;
+    string description = 2;
+    map<string, string> params = 3;
+    bool require_verification = 4;
+}
+
+message ExecuteResponse {
+    bool success = 1;
+    string result = 2;
+    string action_id = 3;
+    string signature = 4;
+}
+
+message VerifyRequest {
+    string action_id = 1;
+    string signature = 2;
+    string public_key = 3;
+}
+
+message VerifyResponse {
+    bool valid = 1;
+    string message = 2;
+}
+
+message SignRequest {
+    bytes data = 1;
+    string purpose = 2;
+}
+
+message SignResponse {
+    bytes signature = 1;
+    string public_key = 2;
+}
+
+message PacketRequest {
+    string source = 1;
+    string destination = 2;
+    string action = 3;
+    bytes payload = 4;
+    string signature = 5;
+}
+
+message PacketResponse {
+    bool delivered = 1;
+    string packet_id = 2;
+    string error = 3;
+}
+
+message StreamPacketsRequest {
+    string filter = 1;
+    bool include_self = 2;
+}
+
+message Packet {
+    string id = 1;
+    string source = 2;
+    string destination = 3;
+    string action = 4;
+    bytes payload = 5;
+    string signature = 6;
+    Timestamp timestamp = 7;
+}
+
+// ============================================================================
+// CODE SERVICE - Kód kezelés
+// ============================================================================
+
+service CodeService {
+    // Kód elemzés
+    rpc Analyze(AnalyzeRequest) returns (AnalyzeResponse);
+
+    // Kód generálás
+    rpc Generate(GenerateRequest) returns (GenerateResponse);
+
+    // Sablonok listázása
+    rpc ListTemplates(ListTemplatesRequest) returns (ListTemplatesResponse);
+
+    // Kód blokk lekérdezése
+    rpc GetCodeBlock(GetCodeBlockRequest) returns (CodeBlock);
+
+    // Kód blokk mentése
+    rpc StoreCodeBlock(StoreCodeBlockRequest) returns (StoreCodeBlockResponse);
+}
+
+message AnalyzeRequest {
+    string code = 1;
+    string language = 2;
+    repeated string checks = 3;  // syntax, security, performance, style
+}
+
+message AnalyzeResponse {
+    bool valid = 1;
+    repeated CodeIssue issues = 2;
+    CodeMetrics metrics = 3;
+    repeated string suggestions = 4;
+}
+
+message CodeIssue {
+    string severity = 1;  // error, warning, info
+    string message = 2;
+    int32 line = 3;
+    int32 column = 4;
+    string rule = 5;
+}
+
+message CodeMetrics {
+    int32 lines = 1;
+    int32 complexity = 2;
+    int32 functions = 3;
+    int32 classes = 4;
+    double maintainability = 5;
+}
+
+message GenerateRequest {
+    string description = 1;
+    string language = 2;
+    string template = 3;
+    map<string, string> params = 4;
+}
+
+message GenerateResponse {
+    string code = 1;
+    string explanation = 2;
+    repeated string dependencies = 3;
+}
+
+message ListTemplatesRequest {
+    string language = 1;
+    string category = 2;
+}
+
+message ListTemplatesResponse {
+    repeated TemplateInfo templates = 1;
+}
+
+message TemplateInfo {
+    string name = 1;
+    string description = 2;
+    string language = 3;
+    string category = 4;
+    repeated string params = 5;
+}
+
+message GetCodeBlockRequest {
+    string id = 1;
+}
+
+message CodeBlock {
+    string id = 1;
+    string code = 2;
+    string language = 3;
+    string description = 4;
+    Timestamp created_at = 5;
+}
+
+message StoreCodeBlockRequest {
+    string code = 1;
+    string language = 2;
+    string description = 3;
+    repeated string tags = 4;
+}
+
+message StoreCodeBlockResponse {
+    string id = 1;
+    bool success = 2;
+}
+
+// ============================================================================
+// ECHO SERVICE - Digital Echo (önfejlesztés)
+// ============================================================================
+
+service EchoService {
+    // Tanulás
+    rpc Learn(LearnRequest) returns (LearnResponse);
+
+    // Evolúció
+    rpc Evolve(EvolveRequest) returns (EvolveResponse);
+
+    // Minták lekérdezése
+    rpc GetPatterns(GetPatternsRequest) returns (PatternsResponse);
+
+    // Minta alkalmazása
+    rpc ApplyPattern(ApplyPatternRequest) returns (ApplyPatternResponse);
+}
+
+message LearnRequest {
+    string experience = 1;
+    string category = 2;
+    double importance = 3;
+    map<string, string> context = 4;
+}
+
+message LearnResponse {
+    bool success = 1;
+    string pattern_id = 2;
+    repeated string insights = 3;
+}
+
+message EvolveRequest {
+    string target = 1;  // skill, behavior, knowledge
+    string direction = 2;
+    map<string, string> constraints = 3;
+}
+
+message EvolveResponse {
+    bool success = 1;
+    repeated string changes = 2;
+    double improvement = 3;
+}
+
+message GetPatternsRequest {
+    string category = 1;
+    int32 limit = 2;
+    double min_confidence = 3;
+}
+
+message PatternsResponse {
+    repeated Pattern patterns = 1;
+}
+
+message Pattern {
+    string id = 1;
+    string name = 2;
+    string description = 3;
+    string category = 4;
+    double confidence = 5;
+    int32 usage_count = 6;
+}
+
+message ApplyPatternRequest {
+    string pattern_id = 1;
+    string input = 2;
+    map<string, string> params = 3;
+}
+
+message ApplyPatternResponse {
+    bool success = 1;
+    string result = 2;
+    double confidence = 3;
+}
+
+// ============================================================================
+// KNOWLEDGE SERVICE - Tudásbázis
+// ============================================================================
+
+service KnowledgeService {
+    // Tudás keresése
+    rpc Query(KnowledgeQueryRequest) returns (KnowledgeQueryResponse);
+
+    // Tudás hozzáadása
+    rpc Add(AddKnowledgeRequest) returns (AddKnowledgeResponse);
+
+    // Tudás stream
+    rpc StreamKnowledge(StreamKnowledgeRequest) returns (stream KnowledgeChunk);
+}
+
+message KnowledgeQueryRequest {
+    string query = 1;
+    repeated string domains = 2;
+    int32 limit = 3;
+    double threshold = 4;
+}
+
+message KnowledgeQueryResponse {
+    repeated KnowledgeItem items = 1;
+    string summary = 2;
+}
+
+message KnowledgeItem {
+    string id = 1;
+    string content = 2;
+    string domain = 3;
+    double relevance = 4;
+    string source = 5;
+    Timestamp updated_at = 6;
+}
+
+message AddKnowledgeRequest {
+    string content = 1;
+    string domain = 2;
+    string source = 3;
+    repeated string tags = 4;
+    map<string, string> metadata = 5;
+}
+
+message AddKnowledgeResponse {
+    string id = 1;
+    bool success = 2;
+    string message = 3;
+}
+
+message StreamKnowledgeRequest {
+    string topic = 1;
+    bool deep = 2;
+}
+
+message KnowledgeChunk {
+    string content = 1;
+    string type = 2;  // fact, concept, relation
+    bool done = 3;
+}
+
+// ============================================================================
+// GENOME SERVICE - AI Etika
+// ============================================================================
+
+service GenomeService {
+    // Állapot lekérdezése
+    rpc GetStatus(EmptyRequest) returns (GenomeStatusResponse);
+
+    // Akció ellenőrzése
+    rpc VerifyAction(VerifyActionRequest) returns (VerifyActionResponse);
+
+    // Döntés aláírása
+    rpc SignDecision(SignDecisionRequest) returns (SignDecisionResponse);
+
+    // Audit napló lekérdezése
+    rpc GetAuditTrail(GetAuditTrailRequest) returns (AuditTrailResponse);
+
+    // Etikai szabályok lekérdezése
+    rpc GetRules(EmptyRequest) returns (RulesResponse);
+}
+
+message GenomeStatusResponse {
+    bool enabled = 1;
+    bool sealed = 2;
+    int32 rules_count = 3;
+    int32 violations = 4;
+    int32 max_violations = 5;
+    int32 total_actions = 6;
+    int32 approved_actions = 7;
+    int32 denied_actions = 8;
+    string integrity_hash = 9;
+}
+
+message VerifyActionRequest {
+    string action_type = 1;
+    string description = 2;
+    map<string, string> context = 3;
+}
+
+message VerifyActionResponse {
+    bool allowed = 1;
+    string reason = 2;
+    repeated string violated_rules = 3;
+    string decision_id = 4;
+}
+
+message SignDecisionRequest {
+    string decision_id = 1;
+    string action_type = 2;
+    string outcome = 3;
+}
+
+message SignDecisionResponse {
+    string signature = 1;
+    bool success = 2;
+    string message = 3;
+}
+
+message GetAuditTrailRequest {
+    int32 limit = 1;
+    string action_type = 2;
+    Timestamp since = 3;
+}
+
+message AuditTrailResponse {
+    repeated AuditEntry entries = 1;
+    int32 total = 2;
+}
+
+message AuditEntry {
+    string id = 1;
+    string action_type = 2;
+    string description = 3;
+    bool allowed = 4;
+    string reason = 5;
+    string signature = 6;
+    Timestamp timestamp = 7;
+}
+
+message RulesResponse {
+    repeated EthicalRule rules = 1;
+}
+
+message EthicalRule {
+    string id = 1;
+    string name = 2;
+    string description = 3;
+    string category = 4;
+    int32 priority = 5;
+    bool immutable = 6;
+}
+
+// ============================================================================
+// VOICE SERVICE - Streaming TTS/STT (Magyar hang)
+// ============================================================================
+
+service VoiceService {
+    // === TTS (Text-to-Speech) ===
+
+    // Streaming beszéd - szöveg → audio chunk-ok
+    rpc Speak(SpeakRequest) returns (stream AudioChunk);
+
+    // Egyszerű TTS (nem streaming, teljes audio visszaadás)
+    rpc SpeakSync(SpeakRequest) returns (SpeakResponse);
+
+    // === STT (Speech-to-Text) ===
+
+    // Streaming transzkripció - audio → szöveg chunk-ok
+    rpc Listen(stream AudioChunk) returns (TranscriptionResponse);
+
+    // Folyamatos hallgatás VAD-dal (Voice Activity Detection)
+    rpc ListenContinuous(ListenContinuousRequest) returns (stream TranscriptionChunk);
+
+    // === Valós idejű beszélgetés ===
+
+    // Bidirectional streaming - teljes voice conversation
+    rpc Converse(stream AudioChunk) returns (stream ConversationChunk);
+
+    // === Beállítások ===
+
+    // Elérhető hangok listázása
+    rpc GetVoices(EmptyRequest) returns (VoicesResponse);
+
+    // Hang beállítása
+    rpc SetVoice(SetVoiceRequest) returns (SetVoiceResponse);
+
+    // Aktuális voice állapot
+    rpc GetVoiceStatus(EmptyRequest) returns (VoiceStatusResponse);
+}
+
+// === TTS Messages ===
+
+message SpeakRequest {
+    string text = 1;                          // Szöveg amit ki kell mondani
+    string voice = 2;                         // Hang: "berta", "anna", "default"
+    string emotion = 3;                       // Alapérzelem: "joy", "neutral", "sadness"
+    map<string, double> emotions_21d = 4;     // 21D érzelem vektor (opcionális)
+    SpeakSettings settings = 5;               // Részletes beállítások
+}
+
+message SpeakSettings {
+    double speed = 1;           // Sebesség (0.5 - 2.0, default: 1.0)
+    double pitch = 2;           // Hangmagasság módosító
+    double volume = 3;          // Hangerő (0.0 - 1.0)
+    double noise_scale = 4;     // Piper noise_scale
+    double noise_w = 5;         // Piper noise_w
+    double length_scale = 6;    // Piper length_scale
+    string format = 7;          // Audio formátum: "wav", "opus", "mp3"
+    int32 sample_rate = 8;      // Sample rate (default: 22050)
+}
+
+message SpeakResponse {
+    bytes audio = 1;            // Teljes audio adat
+    string format = 2;          // Audio formátum
+    int32 sample_rate = 3;      // Sample rate
+    double duration = 4;        // Időtartam másodpercben
+}
+
+message AudioChunk {
+    bytes data = 1;             // Audio adat (PCM vagy kódolt)
+    int32 sequence = 2;         // Sorszám
+    bool is_final = 3;          // Utolsó chunk?
+    string format = 4;          // Formátum
+    int32 sample_rate = 5;      // Sample rate
+    double timestamp = 6;       // Időbélyeg (másodperc)
+    map<string, string> metadata = 7;
+}
+
+// === STT Messages ===
+
+message ListenContinuousRequest {
+    string language = 1;        // Nyelv: "hu", "en", "auto" (default: "hu")
+    bool vad_enabled = 2;       // Voice Activity Detection
+    double vad_threshold = 3;   // VAD küszöb (0.0 - 1.0)
+    double silence_timeout = 4; // Csend timeout (másodperc)
+    bool word_timestamps = 5;   // Szó-szintű időbélyegek
+    bool auto_language = 6;     // Automatikus nyelvfelismerés
+    bool translate_to = 7;      // Fordítás angolra (Whisper translate mód)
+    string model = 8;           // Whisper modell: "tiny", "base", "small", "medium", "large"
+}
+
+// Támogatott STT nyelvek:
+//   - "hu" : Magyar (default, optimalizált)
+//   - "en" : English
+//   - "de" : German (Német)
+//   - "auto": Automatikus nyelvfelismerés
+
+message TranscriptionResponse {
+    string text = 1;                    // Teljes transzkripció
+    string language = 2;                // Észlelt nyelv
+    double confidence = 3;              // Bizonyosság (0.0 - 1.0)
+    repeated WordInfo words = 4;        // Szavak időbélyegekkel
+    double duration = 5;                // Audio időtartam
+}
+
+message TranscriptionChunk {
+    string text = 1;            // Részleges transzkripció
+    bool is_final = 2;          // Végleges (vagy interim)?
+    double confidence = 3;      // Bizonyosság
+    double timestamp = 4;       // Időbélyeg
+    string speaker = 5;         // Beszélő azonosító (ha van)
+    bool speech_started = 6;    // VAD: beszéd kezdődött
+    bool speech_ended = 7;      // VAD: beszéd véget ért
+}
+
+message WordInfo {
+    string word = 1;
+    double start = 2;           // Kezdés (másodperc)
+    double end = 3;             // Vég (másodperc)
+    double confidence = 4;
+}
+
+// === Conversation Messages ===
+
+message ConversationChunk {
+    oneof content {
+        TranscriptionChunk transcription = 1;   // Amit a user mondott
+        AudioChunk audio = 2;                   // Hope válasza (audio)
+        string text = 3;                        // Hope válasza (szöveg)
+        EmotionState emotion = 4;               // Hope érzelmi állapota
+    }
+    string turn = 5;            // "user" vagy "hope"
+    double timestamp = 6;
+}
+
+message EmotionState {
+    string dominant = 1;                    // Domináns érzelem
+    double intensity = 2;                   // Intenzitás
+    map<string, double> emotions_21d = 3;   // Teljes 21D vektor
+}
+
+// === Voice Settings Messages ===
+
+message VoicesResponse {
+    repeated VoiceInfo voices = 1;
+    string current_voice = 2;
+}
+
+message VoiceInfo {
+    string id = 1;              // "berta", "anna", "ryan", "amy"
+    string name = 2;            // "Berta (magyar női hang)"
+    string language = 3;        // "hu-HU", "en-US", "en-GB"
+    string gender = 4;          // "female", "male"
+    string description = 5;
+    bool available = 6;
+    repeated string emotions = 7;   // Támogatott érzelmek
+    string engine = 8;          // "piper", "edge", "coqui"
+    string style = 9;           // "conversational", "narration", "news"
+}
+
+// Előre definiált hangok (konstansok)
+// Magyar hangok:
+//   - "berta"     : hu-HU, female, Piper TTS
+//   - "anna"      : hu-HU, female, Piper TTS
+//   - "noemi"     : hu-HU, female, Edge TTS (hu-HU-NoemiNeural)
+//   - "tamas"     : hu-HU, male,   Edge TTS (hu-HU-TamasNeural)
+//
+// English voices:
+//   - "ryan"      : en-US, male,   Piper TTS (en_US-ryan-high)
+//   - "amy"       : en-GB, female, Piper TTS (en_GB-amy-medium)
+//   - "jenny"     : en-US, female, Edge TTS (en-US-JennyNeural)
+//   - "guy"       : en-US, male,   Edge TTS (en-US-GuyNeural)
+//   - "aria"      : en-US, female, Edge TTS (en-US-AriaNeural)
+//   - "davis"     : en-US, male,   Edge TTS (en-US-DavisNeural)
+
+message SetVoiceRequest {
+    string voice = 1;
+    string emotion = 2;
+    map<string, double> emotions_21d = 3;
+}
+
+message SetVoiceResponse {
+    bool success = 1;
+    string message = 2;
+    string current_voice = 3;
+}
+
+message VoiceStatusResponse {
+    bool tts_available = 1;
+    bool stt_available = 2;
+    string current_voice = 3;
+    string current_emotion = 4;
+    map<string, double> current_emotions_21d = 5;
+    int32 tts_port = 6;
+    int32 stt_port = 7;
+    double latency_ms = 8;
+}

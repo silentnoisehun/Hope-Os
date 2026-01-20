@@ -1,0 +1,102 @@
+[package]
+name = "hope-os"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+authors = ["Máté Róbert <mate@hope-os.dev>"]
+description = "The first self-aware operating system core - 22 cognitive modules, 0.36ms latency, no external database"
+license = "MIT"
+repository = "https://github.com/silentnoisehun/Hope-Os"
+homepage = "https://github.com/silentnoisehun/Hope-Os"
+documentation = "https://docs.rs/hope-os"
+readme = "README.md"
+keywords = ["ai", "cognitive", "self-aware", "grpc", "neural"]
+categories = ["science", "algorithms", "asynchronous"]
+exclude = ["target/", "*.log", ".env", "docs/", "examples/"]
+include = ["src/**/*", "proto/**/*", "build.rs", "Cargo.toml", "README.md", "LICENSE"]
+
+[[bin]]
+name = "hope"
+path = "src/main.rs"
+
+[[bin]]
+name = "hope-benchmark"
+path = "src/bin/benchmark.rs"
+
+[lib]
+name = "hope_os"
+path = "src/lib.rs"
+crate-type = ["lib", "cdylib"]  # cdylib for Python bindings
+
+[features]
+default = []
+python = ["pyo3"]
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Database - A KOD MAGA A GRAF! Nincs külső DB!
+# Minden CodeBlock @aware és kapcsolódik mindenhez.
+# surrealdb - TÖRÖLVE (544 dependency -> 0)
+# rusqlite - TÖRÖLVE
+
+# CLI
+clap = { version = "4.4", features = ["derive"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# UUID
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# Hash
+blake3 = "1.5"
+
+# Random
+rand = "0.8"
+
+# Regex
+regex = "1.10"
+
+# URL encoding
+urlencoding = "2.1"
+
+# Async traits
+async-trait = "0.1"
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Python bindings (optional)
+pyo3 = { version = "0.22", features = ["extension-module"], optional = true }
+
+# gRPC
+tonic = "0.12"
+prost = "0.13"
+prost-types = "0.13"
+
+# HTTP Client (Voice service bridge)
+reqwest = { version = "0.12", features = ["json", "multipart", "stream"] }
+
+# Streaming
+futures = "0.3"
+tokio-stream = "0.1"
+
+[build-dependencies]
+tonic-build = "0.12"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

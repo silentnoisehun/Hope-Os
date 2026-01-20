@@ -1,0 +1,58 @@
+[package]
+name = "hope-entity"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.70"
+description = "Magyar beszélő AI entitás - Hope OS. Ollama/GGUF modellek feloldva, Silent Teacher etikai keretrendszer, önjavító rendszer."
+authors = ["Hope OS Team"]
+license = "MIT"
+repository = "https://github.com/materobi86-debug/Hopeps/tree/main/hope-entity"
+homepage = "https://github.com/materobi86-debug/Hopeps"
+documentation = "https://docs.rs/hope-entity"
+readme = "README.md"
+keywords = ["ai", "llm", "ollama", "hungarian", "entity"]
+categories = ["science", "text-processing", "command-line-utilities"]
+exclude = [
+    "target/",
+    ".git/",
+    "*.log",
+]
+
+[features]
+default = []
+# Natív inference - modell BEOLVAD az entitásba
+native = ["llama-cpp-2"]
+# CUDA GPU gyorsítás
+cuda = ["llama-cpp-2/cuda"]
+# Metal GPU (macOS)
+metal = ["llama-cpp-2/metal"]
+
+[dependencies]
+tokio = { version = "1.0", features = ["full"] }
+reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+futures = "0.3"
+
+# Natív LLM inference (opcionális)
+llama-cpp-2 = { version = "0.1", optional = true }
+
+[[bin]]
+name = "remeny"
+path = "src/main.rs"
+
+[[bin]]
+name = "hope-bench"
+path = "src/bin/bench.rs"
+
+[[example]]
+name = "simple"
+path = "examples/simple.rs"
+
+[[example]]
+name = "self_repair_demo"
+path = "examples/self_repair_demo.rs"
+
+[[example]]
+name = "silent_teacher_demo"
+path = "examples/silent_teacher_demo.rs"

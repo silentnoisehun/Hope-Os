@@ -1,0 +1,95 @@
+# =============================================================================
+# HOPE OS - .gitignore
+# =============================================================================
+
+# Rust Build
+/target/
+**/*.rs.bk
+*.pdb
+
+# Dependencies lock (optional - some prefer to commit this)
+Cargo.lock
+
+# IDE / Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Environment / Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+credentials.json
+secrets.yaml
+secrets.json
+
+# Data (local testing)
+/data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary
+/tmp/
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Test / Coverage
+*.profraw
+*.profdata
+/coverage/
+*.lcov
+tarpaulin-report.html
+/test-results/
+
+# Documentation build
+/docs/build/
+/docs/_build/
+
+# Benchmark results (optional)
+/bench_results/
+
+# Large external directories (not part of core)
+/hope_code/
+/claude_hope/
+/claude_setup/
+
+# Generated files
+*.generated.*
+
+# Binaries (except in releases)
+*.exe
+*.dll
+*.so
+*.dylib
+
+# =============================================================================
+# Keep these
+# =============================================================================
+!.gitkeep
+!.gitignore
