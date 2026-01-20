@@ -470,17 +470,14 @@ impl DistributedConfigManager {
     /// Sync from leader
     pub async fn sync_from_leader(&self, leader_config: HashMap<String, ConfigEntry>) {
         let mut store = self.config_store.write().await;
-        let mut synced = 0;
 
         for (key, entry) in leader_config {
             if let Some(existing) = store.get(&key) {
                 if entry.version > existing.version {
                     store.insert(key, entry);
-                    synced += 1;
                 }
             } else {
                 store.insert(key, entry);
-                synced += 1;
             }
         }
 
