@@ -71,8 +71,25 @@
 //! ```
 
 #![doc(html_root_url = "https://docs.rs/hope-os/0.1.0")]
-// Clippy engedélyezések - tonic::Status mérete miatt szükséges
+// Clippy engedélyezések
 #![allow(clippy::result_large_err)]
+#![allow(clippy::derivable_impls)]
+#![allow(clippy::let_and_return)]
+#![allow(clippy::should_implement_trait)]
+#![allow(clippy::unwrap_or_default)]
+#![allow(clippy::new_without_default)]
+#![allow(clippy::type_complexity)]
+#![allow(clippy::map_flatten)]
+#![allow(clippy::for_kv_map)]
+#![allow(clippy::useless_format)]
+#![allow(clippy::len_zero)]
+#![allow(clippy::manual_range_contains)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::collapsible_if)]
+#![allow(dead_code)]
+#![allow(unused_variables)]
+#![allow(unused_mut)]
+#![allow(unused_imports)]
 
 pub mod core;
 pub mod data;

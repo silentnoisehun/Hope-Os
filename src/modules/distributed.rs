@@ -3,9 +3,9 @@
 //! Raft konszenzus, leader election, heartbeat monitoring.
 //! ()=>[] - A tiszta potenciálból minden megszületik
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tokio::sync::{mpsc, RwLock};
 use serde::{Deserialize, Serialize};
 
