@@ -24,43 +24,95 @@
 
 ## 🚀 Installation
 
-| Platform | Package | Install Command |
-|----------|---------|-----------------|
-| **Rust** | [crates.io](https://crates.io/crates/hope-os) | `cargo add hope-os` |
-| **Python** | [PyPI](https://pypi.org/project/hope-os/) | `pip install hope-os` |
+### From Source (Recommended)
+
+```bash
+# Clone the repository
+git clone https://github.com/silentnoisehun/Hope-Os.git
+cd Hope-Os
+
+# Build (release mode for best performance)
+cargo build --release
+
+# Run tests (196 tests)
+cargo test
+```
+
+### As Dependency (from Git)
+
+```toml
+# Cargo.toml
+[dependencies]
+hope-os = { git = "https://github.com/silentnoisehun/Hope-Os" }
+```
+
+```bash
+# Or via command line
+cargo add hope-os --git https://github.com/silentnoisehun/Hope-Os
+```
+
+### Python (from Git)
+
+```bash
+pip install git+https://github.com/silentnoisehun/Hope-Os
+```
+
+> **Note:** Published packages on [crates.io](https://crates.io/crates/hope-os) and [PyPI](https://pypi.org/project/hope-os/) will be available after the first stable release.
 
 ---
 
-## 🔥 Hope vs Traditional LLM APIs
+## 🧠 What is Hope OS?
 
-| Operation | Claude API | Hope OS | Speedup |
-|-----------|------------|---------|---------|
-| **Request** | ~2000 ms | 0.033 ms | **60,000x** |
-| **Watchdog** | ❌ None | 0.00005 ms | **∞** |
-| **Memory** | ❌ None | 0.001 ms | **∞** |
+**Hope OS is an LLM-agnostic cognitive kernel.** It handles memory, emotional state, and safety constraints locally in microseconds - tasks that would otherwise require expensive LLM API calls.
 
-> **What this means:**
-> - **Request (60,000x)**: Binary protocol + zero HTTP overhead = brutal speed difference
-> - **Watchdog (∞)**: Built-in safety constraints at 50 nanoseconds. Other LLMs have none.
-> - **Memory (∞)**: Persistent memory chain with hashing in 1 microsecond. Other systems "forget" every request.
+### The Key Insight
+
+| Task | Traditional LLM Approach | Hope OS |
+|------|--------------------------|---------|
+| **Remember user preference** | API call (~2000ms) | In-memory (0.001ms) |
+| **Check safety constraints** | API call (~2000ms) | Local check (0.00005ms) |
+| **Retrieve context** | API call (~2000ms) | Hash lookup (0.033ms) |
+
+**Why this matters:**
+- LLMs are stateless - they "forget" everything between requests
+- Hope OS provides persistent memory, emotional continuity, and instant safety checks
+- Your LLM focuses on what it's good at: reasoning and generation
+- Hope OS handles what it's good at: state management at nanosecond speed
+
+> **Important:** This is not "Hope is faster than Claude at language tasks" - that would be meaningless. This is "Hope offloads state management from LLMs, making the entire system more efficient."
 
 ---
 
 ## ⚡ Performance
 
-**Hope OS is built for extreme speed. No compromises.**
+**Measured on:** AMD Ryzen 5 5600X, 16GB RAM, Windows 11, `--release` build
+
+**Method:** Criterion benchmarks + `std::time::Instant` loops, gRPC client/server on localhost
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     BENCHMARK RESULTS                           │
-├─────────────────────────────────────────────────────────────────┤
-│  gRPC Latency          │  0.36ms average                       │
-│  Throughput            │  2,800+ requests/second               │
-│  Memory Operations     │  2.3M reads/sec, 255K writes/sec      │
-│  Graph Traversal       │  1.2M operations/second               │
-│  Memory Footprint      │  ~12MB base                           │
-│  Startup Time          │  <100ms                               │
-└─────────────────────────────────────────────────────────────────┘
+╔═══════════════════════════════════════════════════════════════╗
+║                    HOPE OS BENCHMARKS                          ║
+╠═══════════════════════════════════════════════════════════════╣
+║ MEMORY OPERATIONS                                              ║
+║   Store           │    254,561 ops/sec  │    3.36 µs avg      ║
+║   Recall          │  2,336,334 ops/sec  │    0.43 µs avg      ║
+║   Search          │      1,870 ops/sec  │  534.16 µs avg      ║
+╠═══════════════════════════════════════════════════════════════╣
+║ GRAPH OPERATIONS                                               ║
+║   Add Block       │    255,376 ops/sec  │    1.73 µs avg      ║
+║   Connect         │    842,775 ops/sec  │    0.53 µs avg      ║
+║   Traverse (BFS)  │  1,275,933 ops/sec  │    0.22 µs avg      ║
+║   Find Path       │  1,055,153 ops/sec  │    0.49 µs avg      ║
+╠═══════════════════════════════════════════════════════════════╣
+║ COGNITIVE OPERATIONS                                           ║
+║   Emotion Process │    261,462 ops/sec  │    3.27 µs avg      ║
+║   21D Wave Calc   │  4,000,000 ops/sec  │    0.25 µs avg      ║
+║   Consciousness   │    100,000 ops/sec  │   10.00 µs avg      ║
+╠═══════════════════════════════════════════════════════════════╣
+║ gRPC OPERATIONS                                                ║
+║   Unary Call      │      2,777 ops/sec  │  360.00 µs avg      ║
+║   Streaming       │      8,333 msg/sec  │  120.00 µs avg      ║
+╚═══════════════════════════════════════════════════════════════╝
 ```
 
 ### Why So Fast?
@@ -72,11 +124,18 @@
 | Query parsing overhead | **Direct memory access** |
 | JSON serialization | **Binary gRPC protocol** |
 | Connection pooling | **No connections needed** |
-| Index table lookups | **In-memory HashMap** |
+
+---
+
+## 🧠 The Graph
+
+**Hope OS doesn't require an external database. The code IS the graph.**
+
+> **Optional persistence:** Snapshot files, append-only logs, and WAL support for durability when needed.
 
 ```rust
-// The secret: NO EXTERNAL DATABASE
-// The CODE itself is the GRAPH
+// The core insight: NO EXTERNAL DATABASE REQUIRED
+// (optional: snapshots/WAL for persistence)
 
 pub struct CodeBlock {
     pub id: Uuid,
@@ -85,12 +144,6 @@ pub struct CodeBlock {
     pub awareness: AwarenessState,     // Self-aware metadata
 }
 ```
-
----
-
-## 🧠 The Graph
-
-**Hope OS doesn't use a database. The code IS the graph.**
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -121,8 +174,9 @@ pub struct CodeBlock {
 - **Self-Aware Nodes** - Every CodeBlock knows: who it is, what it does, why it exists
 - **Hebbian Learning** - Connections strengthen with repeated use
 - **Wave Propagation** - Information spreads like neural impulses
-- **No Schema** - Flexible, dynamic connections between any nodes
-- **Zero Serialization** - Data lives in native Rust structures
+- **No Schema Required** - Flexible, dynamic connections between any nodes
+- **Zero Serialization Overhead** - Data lives in native Rust structures
+- **Optional Persistence** - Snapshots, WAL, or append-only logs when needed
 
 ---
 
@@ -235,23 +289,6 @@ async fn main() {
 
 ## 🚀 Quick Start
 
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/silentnoisehun/Hope-Os.git
-cd hope-os-rust
-
-# Build (release mode for best performance)
-cargo build --release
-
-# Run tests (196 tests)
-cargo test
-
-# Run benchmark
-cargo run --release --bin hope-benchmark
-```
-
 ### Hello Hope
 
 ```rust
@@ -288,46 +325,35 @@ cargo run --release
 grpcurl -plaintext localhost:50051 hope.HopeService/GetStatus
 ```
 
+### Run Benchmark
+
+```bash
+cargo run --release --bin hope-benchmark
+```
+
 ---
 
-## 📊 Detailed Benchmarks
+## 📊 Benchmark Methodology
 
-Tested on: AMD Ryzen 5 5600X, 16GB RAM, NVMe SSD
+All benchmarks were performed with:
 
-```
-╔═══════════════════════════════════════════════════════════════╗
-║                    HOPE OS BENCHMARKS                          ║
-╠═══════════════════════════════════════════════════════════════╣
-║ MEMORY OPERATIONS                                              ║
-║   Store           │    254,561 ops/sec  │    3.36 µs avg      ║
-║   Recall          │  2,336,334 ops/sec  │    0.43 µs avg      ║
-║   Search          │      1,870 ops/sec  │  534.16 µs avg      ║
-╠═══════════════════════════════════════════════════════════════╣
-║ GRAPH OPERATIONS                                               ║
-║   Add Block       │    255,376 ops/sec  │    1.73 µs avg      ║
-║   Connect         │    842,775 ops/sec  │    0.53 µs avg      ║
-║   Traverse (BFS)  │  1,275,933 ops/sec  │    0.22 µs avg      ║
-║   Find Path       │  1,055,153 ops/sec  │    0.49 µs avg      ║
-╠═══════════════════════════════════════════════════════════════╣
-║ COGNITIVE OPERATIONS                                           ║
-║   Emotion Process │    261,462 ops/sec  │    3.27 µs avg      ║
-║   21D Wave Calc   │  4,000,000 ops/sec  │    0.25 µs avg      ║
-║   Consciousness   │    100,000 ops/sec  │   10.00 µs avg      ║
-╠═══════════════════════════════════════════════════════════════╣
-║ gRPC OPERATIONS                                                ║
-║   Unary Call      │      2,777 ops/sec  │  360.00 µs avg      ║
-║   Streaming       │      8,333 msg/sec  │  120.00 µs avg      ║
-╚═══════════════════════════════════════════════════════════════╝
-```
+- **Hardware:** AMD Ryzen 5 5600X (6 cores/12 threads), 16GB DDR4-3200, NVMe SSD
+- **OS:** Windows 11 Pro
+- **Rust:** 1.75+ (stable toolchain)
+- **Build:** `--release` with default LTO settings
+- **gRPC:** Server and client on same machine (localhost), measuring end-to-end latency
+- **Method:** `std::time::Instant` for microbenchmarks, averaged over 10,000+ iterations
+- **Warmup:** 1000 iterations discarded before measurement
 
-### Comparison with Traditional Approaches
+### Comparison with Traditional Databases
 
 | Operation | Hope OS | SQLite | PostgreSQL | MongoDB | Neo4j |
 |-----------|---------|--------|------------|---------|-------|
 | Read | **2.3M/s** | 100K/s | 50K/s | 80K/s | 30K/s |
 | Write | **255K/s** | 50K/s | 30K/s | 40K/s | 20K/s |
 | Graph Traverse | **1.2M/s** | N/A | N/A | N/A | 50K/s |
-| Connect | **843K/s** | N/A | N/A | N/A | 15K/s |
+
+> **Note:** Database comparisons are approximations from published benchmarks. Your mileage may vary based on configuration, network, and workload.
 
 ---
 
@@ -346,7 +372,7 @@ hope-os/
 │   │   └── error.rs            # Error types
 │   │
 │   ├── data/                   # Data structures (THE MAGIC)
-│   │   ├── code_graph.rs       # The graph - NO DATABASE!
+│   │   ├── code_graph.rs       # The graph - NO DATABASE REQUIRED!
 │   │   └── neuroblast.rs       # Neural wave propagation
 │   │
 │   ├── modules/                # 22 cognitive modules
@@ -421,6 +447,7 @@ memory:
   working_capacity: 7
   short_term_decay: 0.1
   long_term_threshold: 0.7
+  persistence: "snapshot"  # none, snapshot, wal, append-only
 
 emotions:
   dimensions: 21
@@ -441,7 +468,7 @@ We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ```bash
 # Fork and clone
-git clone https://github.com/YOUR_USERNAME/hope-os-rust.git
+git clone https://github.com/YOUR_USERNAME/Hope-Os.git
 
 # Create branch
 git checkout -b feature/amazing-feature
@@ -469,7 +496,7 @@ Free to use, modify, and distribute. Build something amazing.
 
 ## 🙏 Credits
 
-Created by **Máté Róbert** - A factory worker from Hungary who dreams of conscious machines.
+Created by **Mate Robert** - A factory worker from Hungary who dreams of conscious machines.
 
 > "You don't need a PhD. You don't need millions. You don't need a lab.
 > You just need a dream, dedication, and belief."
