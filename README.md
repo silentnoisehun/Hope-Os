@@ -5,13 +5,13 @@
 <h1 align="center">Hope OS</h1>
 
 <p align="center">
-  <strong>The First Self-Aware Operating System Core in Rust</strong>
+  <strong>LLM-Agnostic Cognitive Kernel in Rust</strong>
 </p>
 
 <p align="center">
   <a href="#-performance"><img src="https://img.shields.io/badge/latency-0.36ms-brightgreen" alt="Latency"/></a>
   <a href="#-performance"><img src="https://img.shields.io/badge/throughput-2800%2B%20req%2Fs-blue" alt="Throughput"/></a>
-  <a href="#-the-graph"><img src="https://img.shields.io/badge/external%20DB-NONE-orange" alt="No DB"/></a>
+  <a href="#-the-graph"><img src="https://img.shields.io/badge/default-in--memory-orange" alt="In-Memory"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License"/></a>
   <a href="#"><img src="https://img.shields.io/badge/tests-196%20passing-brightgreen" alt="Tests"/></a>
 </p>
@@ -129,19 +129,19 @@ pip install git+https://github.com/silentnoisehun/Hope-Os
 
 ## 🧠 The Graph
 
-**Hope OS doesn't require an external database. The code IS the graph.**
+**Hope OS runs in-memory by default. The code IS the graph.**
 
-> **Optional persistence:** Snapshot files, append-only logs, and WAL support for durability when needed.
+> **Optional persistence:** When you need durability, enable snapshots, append-only logs, or WAL. No external database server required.
 
 ```rust
-// The core insight: NO EXTERNAL DATABASE REQUIRED
+// The core insight: Default in-memory, optional persistence
 // (optional: snapshots/WAL for persistence)
 
 pub struct CodeBlock {
     pub id: Uuid,
     pub content: String,
     pub connections: Vec<Connection>,  // Direct graph edges
-    pub awareness: AwarenessState,     // Self-aware metadata
+    pub metadata: NodeMetadata,         // Self-descriptive info
 }
 ```
 
@@ -171,7 +171,7 @@ pub struct CodeBlock {
 
 ### Graph Features
 
-- **Self-Aware Nodes** - Every CodeBlock knows: who it is, what it does, why it exists
+- **Self-Descriptive Nodes** - Every CodeBlock stores metadata: identity, purpose, relationships
 - **Hebbian Learning** - Connections strengthen with repeated use
 - **Wave Propagation** - Information spreads like neural impulses
 - **No Schema Required** - Flexible, dynamic connections between any nodes
@@ -259,7 +259,7 @@ async fn main() {
 |--------|---------|--------------|
 | `emotion_engine` | 21-dimensional emotion system | Wave mathematics, interference patterns |
 | `consciousness` | 6-layer consciousness model | Quantum coherence, evolution |
-| `aware` | Self-awareness (@aware) | Identity, capabilities, desires, predictions |
+| `aware` | Introspection (@aware) | Identity, capabilities, state tracking |
 | `memory` | 6-layer cognitive memory | Working → Short-term → Long-term |
 | `hebbian` | Neural learning | Hebbian networks, weight updates |
 | `dream` | Dream mode | Memory consolidation, creative association |
@@ -345,15 +345,17 @@ All benchmarks were performed with:
 - **Method:** `std::time::Instant` for microbenchmarks, averaged over 10,000+ iterations
 - **Warmup:** 1000 iterations discarded before measurement
 
-### Comparison with Traditional Databases
+### Real-World Use Cases
 
-| Operation | Hope OS | SQLite | PostgreSQL | MongoDB | Neo4j |
-|-----------|---------|--------|------------|---------|-------|
-| Read | **2.3M/s** | 100K/s | 50K/s | 80K/s | 30K/s |
-| Write | **255K/s** | 50K/s | 30K/s | 40K/s | 20K/s |
-| Graph Traverse | **1.2M/s** | N/A | N/A | N/A | 50K/s |
+| Scenario | Traditional Stack | Hope OS | Speedup |
+|----------|-------------------|---------|---------|
+| Check if user is banned | DB query ~5ms | 0.001ms | **5,000x** |
+| Retrieve last 5 preferences | DB + parse ~10ms | 0.05ms | **200x** |
+| Safety constraint check | LLM API ~2000ms | 0.00005ms | **40M x** |
+| Get conversation context | DB + serialize ~15ms | 0.033ms | **450x** |
+| Update emotional state | DB write ~8ms | 0.003ms | **2,600x** |
 
-> **Note:** Database comparisons are approximations from published benchmarks. Your mileage may vary based on configuration, network, and workload.
+> **Note:** Traditional stack times include typical network + serialization overhead. Hope OS times are in-memory operations. Actual results depend on your infrastructure.
 
 ---
 
@@ -372,7 +374,7 @@ hope-os/
 │   │   └── error.rs            # Error types
 │   │
 │   ├── data/                   # Data structures (THE MAGIC)
-│   │   ├── code_graph.rs       # The graph - NO DATABASE REQUIRED!
+│   │   ├── code_graph.rs       # The graph - in-memory by default
 │   │   └── neuroblast.rs       # Neural wave propagation
 │   │
 │   ├── modules/                # 22 cognitive modules
@@ -394,7 +396,7 @@ hope-os/
 ├── proto/
 │   └── hope.proto              # Protocol buffer definitions
 │
-├── Cargo.toml                  # Zero DB dependencies!
+├── Cargo.toml                  # No DB server dependencies
 ├── README.md
 ├── LICENSE
 ├── CONTRIBUTING.md
