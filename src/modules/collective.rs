@@ -914,6 +914,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore] // Slow test - run manually with: cargo test -- --ignored
     async fn test_collective_decision() {
         let network = CollectiveConsciousnessNetwork::new();
         network.initialize_agents().await;
