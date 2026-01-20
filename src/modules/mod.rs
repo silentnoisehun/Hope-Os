@@ -27,15 +27,13 @@ pub mod voice;
 
 // Agents - Multi-agent koordináció
 pub use agents::{
-    AgentHandler, AgentInfo, AgentOrchestrator, AgentStatus, AgentTask, AgentTaskPriority,
-    Channel, Message, MessageType, OrchestratorConfig, OrchestratorStats, OrchestratorStatus,
-    Resource, TaskStatus as AgentTaskStatus,
+    AgentHandler, AgentInfo, AgentOrchestrator, AgentStatus, AgentTask, AgentTaskPriority, Channel,
+    Message, MessageType, OrchestratorConfig, OrchestratorStats, OrchestratorStatus, Resource,
+    TaskStatus as AgentTaskStatus,
 };
 
 // ALAN - Önkódoló rendszer
-pub use alan::{
-    Alan, AlanConfig, AlanStats, ChangeType, CodeChange, CodeIssue, SelfAnalysis,
-};
+pub use alan::{Alan, AlanConfig, AlanStats, ChangeType, CodeChange, CodeIssue, SelfAnalysis};
 
 // Code DNA - Evolúciós kód rendszer
 pub use code_dna::{
@@ -44,9 +42,7 @@ pub use code_dna::{
 };
 
 // Dream - Álom mód
-pub use dream::{
-    Dream, DreamEngine, DreamSession, DreamStats, DreamType, SleepPhase,
-};
+pub use dream::{Dream, DreamEngine, DreamSession, DreamStats, DreamType, SleepPhase};
 
 // Heart - Érzelmek
 pub use heart::{Emotion, EmotionalEvent, HopeHeart};
@@ -70,71 +66,63 @@ pub use swarm::{
 };
 
 // Templates - Sablon gyűjtemény
-pub use templates::{
-    Template, TemplateCategory, TemplateEngine, TemplateEngineStats,
-};
+pub use templates::{Template, TemplateCategory, TemplateEngine, TemplateEngineStats};
 
 // Voice - Hang
 pub use voice::{
-    AudioChunk, Gender, HopeVoice, ListenRequest, ProsodySettings,
-    SpeakRequest, SpeakResponse, TranscriptionChunk, TranscriptionResponse,
-    VoiceConfig, VoiceEngine, VoiceInfo, WordInfo,
+    AudioChunk, Gender, HopeVoice, ListenRequest, ProsodySettings, SpeakRequest, SpeakResponse,
+    TranscriptionChunk, TranscriptionResponse, VoiceConfig, VoiceEngine, VoiceInfo, WordInfo,
 };
 
 // Genome - AI Etika
 pub use genome::{
-    EthicalEvaluation, EthicalPrinciple, EvaluationContext, GenomeStats,
-    HopeGenome, RiskLevel,
+    EthicalEvaluation, EthicalPrinciple, EvaluationContext, GenomeStats, HopeGenome, RiskLevel,
 };
 
 // Hebbian - Tanulás
 pub use hebbian::{
-    HebbianConfig, HebbianEngine, HebbianEngineStats, HebbianNetwork,
-    HebbianNeuron, NetworkStats,
+    HebbianConfig, HebbianEngine, HebbianEngineStats, HebbianNetwork, HebbianNeuron, NetworkStats,
 };
 
 // Emotion Engine - 21D érzelmek
 pub use emotion_engine::{
-    EmotionEngine, EmotionEngineStats, EmotionType, EmotionWave,
-    EmotionalState, InterferenceResult, ContextType as EmotionContextType,
+    ContextType as EmotionContextType, EmotionEngine, EmotionEngineStats, EmotionType, EmotionWave,
+    EmotionalState, InterferenceResult,
 };
 
 // Aware - @aware önismeret
 pub use aware::{
-    Aware, AwareEvent, AwarenessState, Capabilities, CurrentState,
-    Desires, Identity, Predictions, Reflection,
+    Aware, AwareEvent, AwarenessState, Capabilities, CurrentState, Desires, Identity, Predictions,
+    Reflection,
 };
 
 // Consciousness - Tudat rendszer
 pub use consciousness::{
-    ConsciousnessLayer, ConsciousnessLevel, ConsciousnessState,
-    ConsciousnessSystem, QuantumCoherenceEngine, QuantumState,
+    ConsciousnessLayer, ConsciousnessLevel, ConsciousnessState, ConsciousnessSystem,
+    QuantumCoherenceEngine, QuantumState,
 };
 
 // Pollinations - Vizuális memória
 pub use pollinations::{
-    PollinationsClient, VisualAssociation, VisualMemory,
-    VisualMemoryStore, VisualMemorySystem, VisualMemoryStats,
+    PollinationsClient, VisualAssociation, VisualMemory, VisualMemoryStats, VisualMemoryStore,
+    VisualMemorySystem,
 };
 
 // Context Builder - Kontextus kezelés
 pub use context_builder::{
-    ContextBuilder, ContextBuilderStats, ContextConfig,
-    HopeManifest, MemoryItem,
+    ContextBuilder, ContextBuilderStats, ContextConfig, HopeManifest, MemoryItem,
 };
 
 // Personality - Személyiség
 pub use personality::{
-    HopePersonality, PersonalityReport, PersonalityStats, PersonalityTrait,
-    ResponseModifier,
+    HopePersonality, PersonalityReport, PersonalityStats, PersonalityTrait, ResponseModifier,
 };
 
 // Distributed - Elosztott koordináció
 pub use distributed::{
-    ConfigChange, ConfigEntry, ConfigManagerStats, ConfigOperation,
-    DistributedConfigManager, DistributedOrchestrator, ElectionConfig,
-    ElectionState, ElectionStatus, HeartbeatConfig, HeartbeatMonitor,
-    HealthStatus, LeaderElection, NodeInfo, NodeRole,
+    ConfigChange, ConfigEntry, ConfigManagerStats, ConfigOperation, DistributedConfigManager,
+    DistributedOrchestrator, ElectionConfig, ElectionState, ElectionStatus, HealthStatus,
+    HeartbeatConfig, HeartbeatMonitor, LeaderElection, NodeInfo, NodeRole,
     OrchestratorConfig as DistributedOrchestratorConfig, OrchestratorMetrics,
     OrchestratorStatus as DistributedOrchestratorStatus, SystemState,
 };
@@ -142,6 +130,6 @@ pub use distributed::{
 // Collective - Kollektív tudat
 pub use collective::{
     AgentConsciousnessState, AgentType, CollectiveConsciousnessLevel,
-    CollectiveConsciousnessNetwork, CollectiveDecision, CollectiveNetworkState,
-    CollectiveSense, CollectiveStats, ConsciousnessFlowEvent, DecisionOption,
+    CollectiveConsciousnessNetwork, CollectiveDecision, CollectiveNetworkState, CollectiveSense,
+    CollectiveStats, ConsciousnessFlowEvent, DecisionOption,
 };

@@ -620,12 +620,18 @@ impl HopeGenome {
 
     /// Döntés magyarázata
     pub fn explain_decision(&self, evaluation: &EthicalEvaluation) -> String {
-        let status = if evaluation.permitted { "ENGEDÉLYEZETT" } else { "ELUTASÍTOTT" };
+        let status = if evaluation.permitted {
+            "ENGEDÉLYEZETT"
+        } else {
+            "ELUTASÍTOTT"
+        };
 
         let concerns_str = if evaluation.concerns.is_empty() {
             "- Nincs".to_string()
         } else {
-            evaluation.concerns.iter()
+            evaluation
+                .concerns
+                .iter()
                 .map(|c| format!("- {}", c))
                 .collect::<Vec<_>>()
                 .join("\n")
@@ -634,13 +640,17 @@ impl HopeGenome {
         let recommendations_str = if evaluation.recommendations.is_empty() {
             "- Nincs".to_string()
         } else {
-            evaluation.recommendations.iter()
+            evaluation
+                .recommendations
+                .iter()
                 .map(|r| format!("- {}", r))
                 .collect::<Vec<_>>()
                 .join("\n")
         };
 
-        let principles_str = evaluation.principles_checked.iter()
+        let principles_str = evaluation
+            .principles_checked
+            .iter()
             .map(|p| p.as_str())
             .collect::<Vec<_>>()
             .join(", ");
@@ -691,11 +701,26 @@ Ellenőrzött elvek: {}"#,
     pub fn awareness(&self) -> HashMap<String, String> {
         let mut map = HashMap::new();
         map.insert("type".to_string(), "HopeGenome".to_string());
-        map.insert("purpose".to_string(), "Ethical guardian - az etika a határ".to_string());
-        map.insert("core_values_count".to_string(), self.core_values.len().to_string());
-        map.insert("forbidden_count".to_string(), self.forbidden_actions.len().to_string());
-        map.insert("evaluations".to_string(), self.evaluations.len().to_string());
-        map.insert("total_evaluated".to_string(), self.stats.evaluations.to_string());
+        map.insert(
+            "purpose".to_string(),
+            "Ethical guardian - az etika a határ".to_string(),
+        );
+        map.insert(
+            "core_values_count".to_string(),
+            self.core_values.len().to_string(),
+        );
+        map.insert(
+            "forbidden_count".to_string(),
+            self.forbidden_actions.len().to_string(),
+        );
+        map.insert(
+            "evaluations".to_string(),
+            self.evaluations.len().to_string(),
+        );
+        map.insert(
+            "total_evaluated".to_string(),
+            self.stats.evaluations.to_string(),
+        );
         map.insert("permitted".to_string(), self.stats.permitted.to_string());
         map.insert("denied".to_string(), self.stats.denied.to_string());
         map
@@ -703,7 +728,9 @@ Ellenőrzött elvek: {}"#,
 
     /// Etikai önvizsgálat
     pub fn introspect(&self) -> String {
-        let values_str = self.core_values.iter()
+        let values_str = self
+            .core_values
+            .iter()
             .map(|v| format!("  - {}", v))
             .collect::<Vec<_>>()
             .join("\n");

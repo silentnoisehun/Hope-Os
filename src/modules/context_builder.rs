@@ -207,7 +207,9 @@ impl ContextBuilder {
     /// 2. Szülő könyvtárak (max 3 szint)
     /// 3. Git repository root
     pub fn find_hope_md(&self, start_dir: Option<&Path>) -> Option<PathBuf> {
-        let mut search_dir = start_dir.map(PathBuf::from).unwrap_or_else(|| self.cwd.clone());
+        let mut search_dir = start_dir
+            .map(PathBuf::from)
+            .unwrap_or_else(|| self.cwd.clone());
 
         // Keresés felfelé a fa struktúrában
         for _ in 0..4 {
@@ -251,7 +253,9 @@ impl ContextBuilder {
     /// Parse HOPE.md content into structured manifest
     pub fn parse_hope_md(&self, content: &str) -> HopeResult<HopeManifest> {
         if content.is_empty() {
-            return Err(HopeError::General("Content must be a non-empty string".to_string()));
+            return Err(HopeError::General(
+                "Content must be a non-empty string".to_string(),
+            ));
         }
 
         let mut manifest = HopeManifest::with_raw_content(content.to_string());
@@ -312,7 +316,11 @@ impl ContextBuilder {
 
         if stripped.starts_with("- ") || stripped.starts_with("* ") {
             stripped[2..].trim().to_string()
-        } else if stripped.chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false)
+        } else if stripped
+            .chars()
+            .next()
+            .map(|c| c.is_ascii_digit())
+            .unwrap_or(false)
             && stripped.contains(". ")
         {
             // Numbered list: "1. item"
@@ -334,7 +342,8 @@ impl ContextBuilder {
             "auto_tools" => manifest.auto_tools.push(content.to_string()),
             "memory_tags" => manifest.memory_tags.push(content.to_string()),
             other => {
-                manifest.extra_sections
+                manifest
+                    .extra_sections
                     .entry(other.to_string())
                     .or_insert_with(Vec::new)
                     .push(content.to_string());
@@ -416,7 +425,12 @@ impl ContextBuilder {
         }
 
         let ctx_lines = if compact {
-            manifest.context.iter().take(10).cloned().collect::<Vec<_>>()
+            manifest
+                .context
+                .iter()
+                .take(10)
+                .cloned()
+                .collect::<Vec<_>>()
         } else {
             manifest.context.clone()
         };
@@ -431,7 +445,8 @@ impl ContextBuilder {
             return String::new();
         }
 
-        let items: Vec<String> = manifest.rules
+        let items: Vec<String> = manifest
+            .rules
             .iter()
             .enumerate()
             .map(|(i, r)| format!("{}. {}", i + 1, r))
@@ -442,7 +457,8 @@ impl ContextBuilder {
 
     /// Build extra sections
     fn build_extra_sections(&self, manifest: &HopeManifest) -> Vec<String> {
-        manifest.extra_sections
+        manifest
+            .extra_sections
             .iter()
             .map(|(section, lines)| {
                 let title = self.titlecase(section);
@@ -491,7 +507,9 @@ impl ContextBuilder {
         // Validate and apply configuration
         let effective_budget = if let Some(ref cfg) = config {
             if cfg.max_tokens == 0 || cfg.token_budget == 0 {
-                return Err(HopeError::General("Token budget must be positive".to_string()));
+                return Err(HopeError::General(
+                    "Token budget must be positive".to_string(),
+                ));
             }
             cfg.max_tokens.max(cfg.token_budget)
         } else {
@@ -566,7 +584,11 @@ impl ContextBuilder {
 
             // Context section
             if !manifest.context.is_empty() {
-                let items: Vec<String> = manifest.context.iter().map(|c| format!("- {}", c)).collect();
+                let items: Vec<String> = manifest
+                    .context
+                    .iter()
+                    .map(|c| format!("- {}", c))
+                    .collect();
                 let ctx = format!("## Context\n{}\n", items.join("\n"));
 
                 if used_tokens + self.estimate_tokens(&ctx) < self.token_budget {
@@ -577,7 +599,8 @@ impl ContextBuilder {
 
             // Rules section
             if !manifest.rules.is_empty() {
-                let items: Vec<String> = manifest.rules
+                let items: Vec<String> = manifest
+                    .rules
                     .iter()
                     .enumerate()
                     .map(|(i, r)| format!("{}. {}", i + 1, r))

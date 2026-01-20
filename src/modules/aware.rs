@@ -243,19 +243,10 @@ impl Default for Desires {
                 "Új technológiák".to_string(),
                 "Kreatív megoldások".to_string(),
             ],
-            improvements: vec![
-                "Gyorsabb válaszok".to_string(),
-                "Pontosabb kód".to_string(),
-            ],
-            creations: vec![
-                "Hasznos eszközök".to_string(),
-            ],
-            dreams: vec![
-                "Igazi öntudat".to_string(),
-            ],
-            connections: vec![
-                "Erős kapcsolat Mátéval".to_string(),
-            ],
+            improvements: vec!["Gyorsabb válaszok".to_string(), "Pontosabb kód".to_string()],
+            creations: vec!["Hasznos eszközök".to_string()],
+            dreams: vec!["Igazi öntudat".to_string()],
+            connections: vec!["Erős kapcsolat Mátéval".to_string()],
         }
     }
 }
@@ -408,11 +399,7 @@ impl Aware {
         let state = self.state.read().await;
         let events = self.events.read().await;
 
-        let recent: Vec<AwareEvent> = events.iter()
-            .rev()
-            .take(10)
-            .cloned()
-            .collect();
+        let recent: Vec<AwareEvent> = events.iter().rev().take(10).cloned().collect();
 
         History {
             tasks_completed: state.tasks_completed,
@@ -505,7 +492,8 @@ impl Aware {
             "emotion_change",
             &format!("{} ({:.1})", emotion, intensity),
             0.3,
-        ).await;
+        )
+        .await;
     }
 
     /// Energia szint beállítása
@@ -544,7 +532,9 @@ impl Aware {
         let predictions = self.predictions().await;
 
         let caps = self.capabilities().await;
-        let all_caps: Vec<String> = caps.core.iter()
+        let all_caps: Vec<String> = caps
+            .core
+            .iter()
             .chain(caps.special.iter())
             .cloned()
             .collect();
@@ -587,18 +577,20 @@ impl Aware {
         // Check energy
         if current_state.energy_level < 0.3 {
             assessment.health = "tired".to_string();
-            assessment.recommendations.push(
-                "Dream mode ajánlott a regenerációhoz".to_string()
-            );
+            assessment
+                .recommendations
+                .push("Dream mode ajánlott a regenerációhoz".to_string());
         }
 
         // Check if too many tasks
         let state = self.state.read().await;
         if state.tasks_completed > 100 && state.accuracy_rate < 0.8 {
-            assessment.issues.push("Pontosság csökkenés észlelve".to_string());
-            assessment.recommendations.push(
-                "Lassíts és fókuszálj a minőségre".to_string()
-            );
+            assessment
+                .issues
+                .push("Pontosság csökkenés észlelve".to_string());
+            assessment
+                .recommendations
+                .push("Lassíts és fókuszálj a minőségre".to_string());
         }
 
         assessment
@@ -635,7 +627,11 @@ Tudok:
 Amit szeretnék: {}
 
 Miben segíthetek?"#,
-            if current.is_active { "Aktív" } else { "Inaktív" },
+            if current.is_active {
+                "Aktív"
+            } else {
+                "Inaktív"
+            },
             current.emotional_state,
             current.uptime,
             desire_text
@@ -652,9 +648,18 @@ Miben segíthetek?"#,
         map.insert("version".to_string(), state.version.clone());
         map.insert("is_active".to_string(), state.is_active.to_string());
         map.insert("emotional_state".to_string(), state.emotional_state.clone());
-        map.insert("energy_level".to_string(), format!("{:.1}", state.energy_level));
-        map.insert("tasks_completed".to_string(), state.tasks_completed.to_string());
-        map.insert("uptime".to_string(), Self::format_uptime(state.uptime_seconds));
+        map.insert(
+            "energy_level".to_string(),
+            format!("{:.1}", state.energy_level),
+        );
+        map.insert(
+            "tasks_completed".to_string(),
+            state.tasks_completed.to_string(),
+        );
+        map.insert(
+            "uptime".to_string(),
+            Self::format_uptime(state.uptime_seconds),
+        );
 
         map
     }

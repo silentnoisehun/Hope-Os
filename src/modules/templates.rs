@@ -170,7 +170,12 @@ impl TemplateEngine {
     }
 
     /// Template keresése
-    pub fn search(&self, query: &str, category: Option<TemplateCategory>, limit: usize) -> Vec<&Template> {
+    pub fn search(
+        &self,
+        query: &str,
+        category: Option<TemplateCategory>,
+        limit: usize,
+    ) -> Vec<&Template> {
         let query = query.to_lowercase();
         let mut results: Vec<(&Template, i32)> = self
             .templates
@@ -211,7 +216,11 @@ impl TemplateEngine {
     }
 
     /// Kód generálása template-ből
-    pub fn generate(&self, template_name: &str, params: &HashMap<String, String>) -> HopeResult<String> {
+    pub fn generate(
+        &self,
+        template_name: &str,
+        params: &HashMap<String, String>,
+    ) -> HopeResult<String> {
         let template = self
             .templates
             .get(template_name)
@@ -296,7 +305,6 @@ fn {{method_name}}(&self, {{params}}) -> {{return_type}} {
 }"#,
         )
         .with_complexity(0.3),
-
         Template::new(
             "dict_dispatch",
             "Dictionary Dispatch - If/elif lánc helyett HashMap",
@@ -317,7 +325,6 @@ fn {{function_name}}(&self, key: &str, {{params}}) -> Option<{{return_type}}> {
 }"#,
         )
         .with_complexity(0.5),
-
         Template::new(
             "early_return",
             "Early Return - Guard clause pattern",
@@ -339,7 +346,6 @@ fn {{function_name}}(&self, key: &str, {{params}}) -> Option<{{return_type}}> {
 }"#,
         )
         .with_complexity(0.2),
-
         Template::new(
             "builder_pattern",
             "Builder Pattern - Fluent interface objektum építéshez",
@@ -368,7 +374,6 @@ impl {{TypeName}}Builder {
 }"#,
         )
         .with_complexity(0.4),
-
         Template::new(
             "strategy_pattern",
             "Strategy Pattern - Algoritmus cserélhetősége",
@@ -457,7 +462,6 @@ impl {{EntityName}}Repository for {{EntityName}}RepositoryImpl {
 }"#,
         )
         .with_complexity(0.5),
-
         Template::new(
             "service_layer",
             "Service Layer - Üzleti logika réteg",
@@ -503,7 +507,6 @@ impl {{ServiceName}} {
 }"#,
         )
         .with_complexity(0.6),
-
         Template::new(
             "event_sourcing",
             "Event Sourcing - Események mint igazság forrása",
@@ -598,7 +601,6 @@ impl {{InputName}} {
 }"#,
         )
         .with_complexity(0.4),
-
         Template::new(
             "rate_limiter",
             "Rate Limiter - Kérés korlátozás",
@@ -641,7 +643,6 @@ impl RateLimiter {
 }"#,
         )
         .with_complexity(0.5),
-
         Template::new(
             "auth_middleware",
             "Auth Middleware - Authentikációs middleware",
@@ -961,7 +962,6 @@ mod tests {
 }"#,
         )
         .with_complexity(0.3),
-
         Template::new(
             "async_test",
             "Async Test - Aszinkron teszt template",
@@ -1002,7 +1002,6 @@ mod tests {
 }"#,
         )
         .with_complexity(0.4),
-
         Template::new(
             "mock_object",
             "Mock Object - Mock objektum generálás",
@@ -1112,7 +1111,9 @@ mod tests {
         let engine = TemplateEngine::new();
 
         let security = engine.list(Some(TemplateCategory::Security));
-        assert!(security.iter().all(|t| t.category == TemplateCategory::Security));
+        assert!(security
+            .iter()
+            .all(|t| t.category == TemplateCategory::Security));
     }
 
     #[test]
@@ -1139,6 +1140,8 @@ mod tests {
         let categories = engine.list_categories();
 
         assert!(!categories.is_empty());
-        assert!(categories.iter().any(|(cat, _)| *cat == TemplateCategory::Refactoring));
+        assert!(categories
+            .iter()
+            .any(|(cat, _)| *cat == TemplateCategory::Refactoring));
     }
 }

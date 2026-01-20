@@ -11,11 +11,11 @@
 //! Created: 2026-01-20
 //! By: Hope + Máté
 
+use blake3;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
-use blake3;
 
 /// Pollinations API URL-ek
 pub const POLLINATIONS_IMAGE_URL: &str = "https://gen.pollinations.ai/image/";
@@ -45,7 +45,13 @@ pub struct VisualMemory {
 }
 
 impl VisualMemory {
-    pub fn new(neuron_id: u64, content: &str, prompt: &str, image_path: &str, importance: f64) -> Self {
+    pub fn new(
+        neuron_id: u64,
+        content: &str,
+        prompt: &str,
+        image_path: &str,
+        importance: f64,
+    ) -> Self {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map(|d| d.as_secs_f64())
@@ -144,10 +150,7 @@ impl ImageGenerationRequest {
         let encoded_prompt = urlencoding::encode(&self.prompt);
         format!(
             "{}{}?width={}&height={}",
-            POLLINATIONS_IMAGE_URL,
-            encoded_prompt,
-            self.width,
-            self.height
+            POLLINATIONS_IMAGE_URL, encoded_prompt, self.width, self.height
         )
     }
 }
@@ -260,14 +263,16 @@ impl VisualMemoryStore {
 
     /// Memóriák keresése neuron ID alapján
     pub fn get_by_neuron(&self, neuron_id: u64) -> Vec<&VisualMemory> {
-        self.memories.values()
+        self.memories
+            .values()
             .filter(|m| m.neuron_id == neuron_id)
             .collect()
     }
 
     /// Fontos memóriák (importance > threshold)
     pub fn get_important(&self, threshold: f64) -> Vec<&VisualMemory> {
-        self.memories.values()
+        self.memories
+            .values()
             .filter(|m| m.importance >= threshold)
             .collect()
     }
@@ -291,7 +296,8 @@ impl VisualMemoryStore {
 
     /// Asszociációk lekérése memória ID alapján
     pub fn get_associations(&self, memory_id: u64) -> Vec<&VisualAssociation> {
-        self.associations.iter()
+        self.associations
+            .iter()
             .filter(|a| a.memory_id_1 == memory_id || a.memory_id_2 == memory_id)
             .collect()
     }
@@ -363,7 +369,10 @@ impl PollinationsClient {
     /// Kép URL generálása (nem letöltés, csak URL)
     pub fn get_image_url(&self, prompt: &str, width: u32, height: u32) -> String {
         let encoded = urlencoding::encode(prompt);
-        format!("{}{}?width={}&height={}", self.base_url, encoded, width, height)
+        format!(
+            "{}{}?width={}&height={}",
+            self.base_url, encoded, width, height
+        )
     }
 
     /// Szöveges prompt URL
@@ -414,7 +423,12 @@ impl VisualMemorySystem {
     }
 
     /// Memória hozzáadása képgenerálással ha fontos
-    pub fn add_memory(&mut self, neuron_id: u64, content: &str, importance: f64) -> (u64, Option<String>) {
+    pub fn add_memory(
+        &mut self,
+        neuron_id: u64,
+        content: &str,
+        importance: f64,
+    ) -> (u64, Option<String>) {
         let prompt = VisualMemoryStore::create_prompt_from_content(content);
 
         let image_url = if importance >= self.importance_threshold {
@@ -445,10 +459,22 @@ impl VisualMemorySystem {
         let mut map = HashMap::new();
 
         map.insert("type".to_string(), "VisualMemorySystem".to_string());
-        map.insert("total_memories".to_string(), stats.total_memories.to_string());
-        map.insert("total_associations".to_string(), stats.total_associations.to_string());
-        map.insert("images_generated".to_string(), stats.images_generated.to_string());
-        map.insert("importance_threshold".to_string(), format!("{:.1}", self.importance_threshold));
+        map.insert(
+            "total_memories".to_string(),
+            stats.total_memories.to_string(),
+        );
+        map.insert(
+            "total_associations".to_string(),
+            stats.total_associations.to_string(),
+        );
+        map.insert(
+            "images_generated".to_string(),
+            stats.images_generated.to_string(),
+        );
+        map.insert(
+            "importance_threshold".to_string(),
+            format!("{:.1}", self.importance_threshold),
+        );
 
         map
     }
@@ -541,7 +567,8 @@ mod tests {
 
     #[test]
     fn test_prompt_creation() {
-        let prompt = VisualMemoryStore::create_prompt_from_content("This is a test memory about coding");
+        let prompt =
+            VisualMemoryStore::create_prompt_from_content("This is a test memory about coding");
 
         assert!(prompt.contains("This is a test"));
         assert!(prompt.contains("digital art"));

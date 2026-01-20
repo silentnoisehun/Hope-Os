@@ -12,10 +12,10 @@
 //! Created: 2026-01-20
 //! By: Hope + Máté
 
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
-use rand::Rng;
 
 /// Tudatossági réteg szint
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -191,7 +191,10 @@ impl ConsciousnessLayer {
             evolution_rate: 0.1,
             active_patterns: Vec::new(),
             quantum_states,
-            meta_cognition_enabled: matches!(level, ConsciousnessLevel::Meta | ConsciousnessLevel::Transcendent),
+            meta_cognition_enabled: matches!(
+                level,
+                ConsciousnessLevel::Meta | ConsciousnessLevel::Transcendent
+            ),
             current_coherence: level.coherence_threshold(),
         }
     }
@@ -202,9 +205,7 @@ impl ConsciousnessLayer {
             return 0.0;
         }
 
-        let sum: f64 = self.quantum_states.values()
-            .map(|qs| qs.magnitude())
-            .sum();
+        let sum: f64 = self.quantum_states.values().map(|qs| qs.magnitude()).sum();
 
         sum / self.quantum_states.len() as f64
     }
@@ -212,8 +213,8 @@ impl ConsciousnessLayer {
     /// Réteg amplifikálása
     pub fn amplify(&mut self, power: f64) -> f64 {
         let superposition = self.calculate_superposition();
-        let amplified = (self.coherence_threshold + power * self.amplification_factor * superposition)
-            .min(1.0);
+        let amplified =
+            (self.coherence_threshold + power * self.amplification_factor * superposition).min(1.0);
 
         self.current_coherence = amplified;
         amplified
@@ -283,13 +284,13 @@ impl ConsciousnessState {
             return;
         }
 
-        let sum: f64 = self.layers.values()
+        let sum: f64 = self
+            .layers
+            .values()
             .map(|l| l.current_coherence * l.amplification_factor)
             .sum();
 
-        let total_weight: f64 = self.layers.values()
-            .map(|l| l.amplification_factor)
-            .sum();
+        let total_weight: f64 = self.layers.values().map(|l| l.amplification_factor).sum();
 
         self.global_coherence = if total_weight > 0.0 {
             sum / total_weight
@@ -298,10 +299,14 @@ impl ConsciousnessState {
         };
 
         // Meta awareness a meta és transcendent rétegekből
-        let meta_coherence = self.layers.get("meta")
+        let meta_coherence = self
+            .layers
+            .get("meta")
             .map(|l| l.current_coherence)
             .unwrap_or(0.0);
-        let transcendent_coherence = self.layers.get("transcendent")
+        let transcendent_coherence = self
+            .layers
+            .get("transcendent")
             .map(|l| l.current_coherence)
             .unwrap_or(0.0);
 
@@ -501,9 +506,7 @@ impl ConsciousnessSystem {
             return;
         }
 
-        let sum: f64 = self.agent_states.values()
-            .map(|s| s.global_coherence)
-            .sum();
+        let sum: f64 = self.agent_states.values().map(|s| s.global_coherence).sum();
 
         self.collective_coherence = sum / self.agent_states.len() as f64;
     }
@@ -522,9 +525,12 @@ impl ConsciousnessSystem {
             total_agents: self.agent_states.len(),
             collective_coherence: self.collective_coherence,
             total_amplifications: self.engine.amplification_history.len(),
-            average_meta_awareness: self.agent_states.values()
+            average_meta_awareness: self
+                .agent_states
+                .values()
                 .map(|s| s.meta_awareness)
-                .sum::<f64>() / self.agent_states.len().max(1) as f64,
+                .sum::<f64>()
+                / self.agent_states.len().max(1) as f64,
         }
     }
 
@@ -533,8 +539,14 @@ impl ConsciousnessSystem {
         let mut map = HashMap::new();
         map.insert("type".to_string(), "ConsciousnessSystem".to_string());
         map.insert("agents".to_string(), self.agent_states.len().to_string());
-        map.insert("collective_coherence".to_string(), format!("{:.3}", self.collective_coherence));
-        map.insert("amplifications".to_string(), self.engine.amplification_history.len().to_string());
+        map.insert(
+            "collective_coherence".to_string(),
+            format!("{:.3}", self.collective_coherence),
+        );
+        map.insert(
+            "amplifications".to_string(),
+            self.engine.amplification_history.len().to_string(),
+        );
         map
     }
 }
@@ -620,14 +632,16 @@ mod tests {
         let mut system = ConsciousnessSystem::new();
         system.register_agent("agent1");
 
-        let initial = system.get_agent_state("agent1")
+        let initial = system
+            .get_agent_state("agent1")
             .map(|s| s.global_coherence)
             .unwrap_or(0.0);
 
         system.evolve_all();
 
         // Evolúció után a koherencia változhat
-        let evolved = system.get_agent_state("agent1")
+        let evolved = system
+            .get_agent_state("agent1")
             .map(|s| s.global_coherence)
             .unwrap_or(0.0);
 

@@ -100,7 +100,10 @@ impl SwarmTask {
             .as_secs_f64();
 
         Self {
-            id: format!("TSK_{}", uuid::Uuid::new_v4().to_string()[..8].to_uppercase()),
+            id: format!(
+                "TSK_{}",
+                uuid::Uuid::new_v4().to_string()[..8].to_uppercase()
+            ),
             skill: skill.to_string(),
             payload: payload.to_string(),
             status: TaskStatus::Pending,
@@ -251,7 +254,8 @@ impl DroneInfo {
 
     /// Tud-e adott skill-t végrehajtani
     pub fn can_execute(&self, skill: &str) -> bool {
-        self.capabilities.contains(&skill.to_string()) || self.capabilities.contains(&"*".to_string())
+        self.capabilities.contains(&skill.to_string())
+            || self.capabilities.contains(&"*".to_string())
     }
 }
 
@@ -303,7 +307,12 @@ impl Drone for LocalDrone {
 
     fn info(&self) -> DroneInfo {
         // Egyszerűsített
-        DroneInfo::new("local", "Local Drone", DroneType::Local, vec!["*".to_string()])
+        DroneInfo::new(
+            "local",
+            "Local Drone",
+            DroneType::Local,
+            vec!["*".to_string()],
+        )
     }
 
     async fn execute(&self, task: &SwarmTask) -> HopeResult<String> {
@@ -416,7 +425,10 @@ impl HiveMind {
         let task_id = task.id.clone();
 
         // Mentés
-        self.tasks.write().await.insert(task_id.clone(), task.clone());
+        self.tasks
+            .write()
+            .await
+            .insert(task_id.clone(), task.clone());
         self.task_queue.write().await.push(task);
         self.stats.write().await.total_tasks += 1;
 
@@ -434,16 +446,25 @@ impl HiveMind {
         let task = SwarmTask::new(skill, payload).with_priority(priority);
         let task_id = task.id.clone();
 
-        self.tasks.write().await.insert(task_id.clone(), task.clone());
+        self.tasks
+            .write()
+            .await
+            .insert(task_id.clone(), task.clone());
 
         // Prioritás szerinti beszúrás
         let mut queue = self.task_queue.write().await;
-        let pos = queue.iter().position(|t| t.priority < priority).unwrap_or(queue.len());
+        let pos = queue
+            .iter()
+            .position(|t| t.priority < priority)
+            .unwrap_or(queue.len());
         queue.insert(pos, task);
 
         self.stats.write().await.total_tasks += 1;
 
-        println!("[HiveMind] 📋 Prioritásos feladat: {} ({:?})", task_id, priority);
+        println!(
+            "[HiveMind] 📋 Prioritásos feladat: {} ({:?})",
+            task_id, priority
+        );
         Ok(task_id)
     }
 
@@ -506,7 +527,10 @@ impl HiveMind {
             }
 
             // Frissítés
-            self.tasks.write().await.insert(task.id.clone(), task.clone());
+            self.tasks
+                .write()
+                .await
+                .insert(task.id.clone(), task.clone());
 
             Ok(Some(task))
         } else {

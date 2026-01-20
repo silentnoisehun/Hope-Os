@@ -3,11 +3,11 @@
 //! Raft konszenzus, leader election, heartbeat monitoring.
 //! ()=>[] - A tiszta potenciálból minden megszületik
 
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{mpsc, RwLock};
-use serde::{Deserialize, Serialize};
 
 use crate::core::{HopeError, HopeResult};
 
@@ -356,7 +356,9 @@ impl DistributedConfigManager {
     pub async fn set_config(&self, key: &str, value: serde_json::Value) -> HopeResult<()> {
         let is_leader = *self.is_leader.read().await;
         if !is_leader {
-            return Err(HopeError::General("Only leader can modify configuration".to_string()));
+            return Err(HopeError::General(
+                "Only leader can modify configuration".to_string(),
+            ));
         }
 
         let mut store = self.config_store.write().await;
@@ -403,7 +405,9 @@ impl DistributedConfigManager {
     pub async fn delete_config(&self, key: &str) -> HopeResult<()> {
         let is_leader = *self.is_leader.read().await;
         if !is_leader {
-            return Err(HopeError::General("Only leader can modify configuration".to_string()));
+            return Err(HopeError::General(
+                "Only leader can modify configuration".to_string(),
+            ));
         }
 
         let mut store = self.config_store.write().await;
@@ -428,7 +432,10 @@ impl DistributedConfigManager {
     pub async fn watch_config(&self, key: &str) -> mpsc::Receiver<ConfigChange> {
         let (tx, rx) = mpsc::channel(100);
         let mut watchers = self.watchers.write().await;
-        watchers.entry(key.to_string()).or_insert_with(Vec::new).push(tx);
+        watchers
+            .entry(key.to_string())
+            .or_insert_with(Vec::new)
+            .push(tx);
 
         // Update stats
         {
@@ -581,7 +588,8 @@ impl HeartbeatMonitor {
     /// Get healthy nodes
     pub async fn get_healthy_nodes(&self) -> Vec<String> {
         let nodes = self.nodes.read().await;
-        nodes.iter()
+        nodes
+            .iter()
             .filter(|(_, n)| n.healthy)
             .map(|(id, _)| id.clone())
             .collect()
@@ -805,7 +813,11 @@ pub struct DistributedOrchestrator {
 impl DistributedOrchestrator {
     /// Új orchestrator
     pub fn new(config: OrchestratorConfig) -> Self {
-        let peers: Vec<String> = config.peer_nodes.iter().map(|n| n.node_id.clone()).collect();
+        let peers: Vec<String> = config
+            .peer_nodes
+            .iter()
+            .map(|n| n.node_id.clone())
+            .collect();
 
         Self {
             config_manager: Arc::new(DistributedConfigManager::new(&config.node_id)),
@@ -998,7 +1010,10 @@ mod tests {
         manager.start().await;
         manager.set_leader(true).await;
 
-        manager.set_config("test.key", serde_json::json!(42)).await.unwrap();
+        manager
+            .set_config("test.key", serde_json::json!(42))
+            .await
+            .unwrap();
         let value = manager.get_config("test.key").await;
         assert_eq!(value, Some(serde_json::json!(42)));
 
@@ -1031,11 +1046,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_leader_election() {
-        let election = LeaderElection::new(
-            "node-1",
-            vec![],
-            ElectionConfig::default(),
-        );
+        let election = LeaderElection::new("node-1", vec![], ElectionConfig::default());
 
         assert_eq!(election.get_state().await, ElectionState::Follower);
 

@@ -107,7 +107,10 @@ impl AgentInfo {
             .as_secs_f64();
 
         Self {
-            agent_id: format!("AGT_{}", uuid::Uuid::new_v4().to_string()[..8].to_uppercase()),
+            agent_id: format!(
+                "AGT_{}",
+                uuid::Uuid::new_v4().to_string()[..8].to_uppercase()
+            ),
             name: name.to_string(),
             capabilities,
             status: AgentStatus::Idle,
@@ -190,7 +193,10 @@ impl AgentTask {
             .as_secs_f64();
 
         Self {
-            task_id: format!("TSK_{}", uuid::Uuid::new_v4().to_string()[..8].to_uppercase()),
+            task_id: format!(
+                "TSK_{}",
+                uuid::Uuid::new_v4().to_string()[..8].to_uppercase()
+            ),
             name: name.to_string(),
             required_capabilities: capabilities,
             priority: AgentTaskPriority::default(),
@@ -251,7 +257,10 @@ pub struct Message {
 impl Message {
     pub fn broadcast(channel: &str, sender: &str, content: serde_json::Value) -> Self {
         Self {
-            message_id: format!("MSG_{}", uuid::Uuid::new_v4().to_string()[..8].to_uppercase()),
+            message_id: format!(
+                "MSG_{}",
+                uuid::Uuid::new_v4().to_string()[..8].to_uppercase()
+            ),
             msg_type: MessageType::Broadcast,
             sender: Some(sender.to_string()),
             recipient: None,
@@ -266,7 +275,10 @@ impl Message {
 
     pub fn direct(from: &str, to: &str, content: serde_json::Value) -> Self {
         Self {
-            message_id: format!("MSG_{}", uuid::Uuid::new_v4().to_string()[..8].to_uppercase()),
+            message_id: format!(
+                "MSG_{}",
+                uuid::Uuid::new_v4().to_string()[..8].to_uppercase()
+            ),
             msg_type: MessageType::Direct,
             sender: Some(from.to_string()),
             recipient: Some(to.to_string()),
@@ -856,7 +868,11 @@ impl AgentOrchestrator {
     }
 
     /// Erőforrás lekérése
-    pub async fn get_resource(&self, agent_id: &str, resource_name: &str) -> Option<serde_json::Value> {
+    pub async fn get_resource(
+        &self,
+        agent_id: &str,
+        resource_name: &str,
+    ) -> Option<serde_json::Value> {
         let resources = self.resources.read().await;
         if let Some(resource) = resources.get(resource_name) {
             // Either locked by this agent or not locked at all
@@ -882,8 +898,14 @@ impl AgentOrchestrator {
         OrchestratorStatus {
             running: *running,
             total_agents: agents.len(),
-            idle_agents: agents.values().filter(|a| a.status == AgentStatus::Idle).count(),
-            busy_agents: agents.values().filter(|a| a.status == AgentStatus::Busy).count(),
+            idle_agents: agents
+                .values()
+                .filter(|a| a.status == AgentStatus::Idle)
+                .count(),
+            busy_agents: agents
+                .values()
+                .filter(|a| a.status == AgentStatus::Busy)
+                .count(),
             queued_tasks: queue.len(),
             completed_tasks: completed.len(),
             channels: channels.len(),
@@ -899,12 +921,27 @@ impl AgentOrchestrator {
 
         let mut map = HashMap::new();
         map.insert("type".to_string(), serde_json::json!("AgentOrchestrator"));
-        map.insert("purpose".to_string(), serde_json::json!("Multi-agent coordination"));
+        map.insert(
+            "purpose".to_string(),
+            serde_json::json!("Multi-agent coordination"),
+        );
         map.insert("running".to_string(), serde_json::json!(status.running));
-        map.insert("total_agents".to_string(), serde_json::json!(status.total_agents));
-        map.insert("idle_agents".to_string(), serde_json::json!(status.idle_agents));
-        map.insert("busy_agents".to_string(), serde_json::json!(status.busy_agents));
-        map.insert("queued_tasks".to_string(), serde_json::json!(status.queued_tasks));
+        map.insert(
+            "total_agents".to_string(),
+            serde_json::json!(status.total_agents),
+        );
+        map.insert(
+            "idle_agents".to_string(),
+            serde_json::json!(status.idle_agents),
+        );
+        map.insert(
+            "busy_agents".to_string(),
+            serde_json::json!(status.busy_agents),
+        );
+        map.insert(
+            "queued_tasks".to_string(),
+            serde_json::json!(status.queued_tasks),
+        );
         map.insert(
             "agents".to_string(),
             serde_json::json!(agents
@@ -952,7 +989,10 @@ mod tests {
 
     #[test]
     fn test_agent_info_creation() {
-        let agent = AgentInfo::new("test_agent", vec!["analyze".to_string(), "refactor".to_string()]);
+        let agent = AgentInfo::new(
+            "test_agent",
+            vec!["analyze".to_string(), "refactor".to_string()],
+        );
 
         assert!(!agent.agent_id.is_empty());
         assert_eq!(agent.name, "test_agent");
@@ -976,7 +1016,11 @@ mod tests {
 
         assert!(agent.has_capability("anything"));
         assert!(agent.has_capability("code"));
-        assert!(agent.has_all_capabilities(&vec!["a".to_string(), "b".to_string(), "c".to_string()]));
+        assert!(agent.has_all_capabilities(&vec![
+            "a".to_string(),
+            "b".to_string(),
+            "c".to_string()
+        ]));
     }
 
     #[test]
@@ -992,7 +1036,8 @@ mod tests {
 
     #[test]
     fn test_message_creation() {
-        let broadcast = Message::broadcast("updates", "agent_1", serde_json::json!({"type": "status"}));
+        let broadcast =
+            Message::broadcast("updates", "agent_1", serde_json::json!({"type": "status"}));
         assert!(matches!(broadcast.msg_type, MessageType::Broadcast));
         assert_eq!(broadcast.channel, Some("updates".to_string()));
 
@@ -1015,7 +1060,8 @@ mod tests {
 
     #[test]
     fn test_resource_locking() {
-        let mut resource = Resource::new("database", serde_json::json!({"connection": "localhost"}));
+        let mut resource =
+            Resource::new("database", serde_json::json!({"connection": "localhost"}));
 
         assert!(!resource.is_locked());
         assert!(resource.lock("agent_1"));
@@ -1056,12 +1102,22 @@ mod tests {
 
         // Create tasks with different priorities
         orchestrator
-            .create_task("low_task", vec!["code".to_string()], AgentTaskPriority::Low, serde_json::json!({}))
+            .create_task(
+                "low_task",
+                vec!["code".to_string()],
+                AgentTaskPriority::Low,
+                serde_json::json!({}),
+            )
             .await
             .unwrap();
 
         orchestrator
-            .create_task("high_task", vec!["code".to_string()], AgentTaskPriority::High, serde_json::json!({}))
+            .create_task(
+                "high_task",
+                vec!["code".to_string()],
+                AgentTaskPriority::High,
+                serde_json::json!({}),
+            )
             .await
             .unwrap();
 
@@ -1091,7 +1147,9 @@ mod tests {
     async fn test_resource_management() {
         let orchestrator = AgentOrchestrator::new();
 
-        orchestrator.register_resource("db", serde_json::json!({"url": "localhost"})).await;
+        orchestrator
+            .register_resource("db", serde_json::json!({"url": "localhost"}))
+            .await;
 
         assert!(orchestrator.acquire_resource("agent_1", "db").await);
         assert!(!orchestrator.acquire_resource("agent_2", "db").await);

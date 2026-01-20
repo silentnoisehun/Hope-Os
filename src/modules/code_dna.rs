@@ -68,7 +68,13 @@ pub struct GeneTraits {
 impl GeneTraits {
     /// Átlagos fitness számítás
     pub fn average_fitness(&self) -> f64 {
-        (self.speed + self.readability + self.safety + (1.0 - self.complexity) + self.documented + self.typed) / 6.0
+        (self.speed
+            + self.readability
+            + self.safety
+            + (1.0 - self.complexity)
+            + self.documented
+            + self.typed)
+            / 6.0
     }
 }
 
@@ -185,7 +191,8 @@ impl Gene {
         self.traits.safety = success_rate;
 
         // Össz fitness
-        let new_fitness = speed_score * 0.3 + (if success { 1.0 } else { 0.0 }) * 0.4 + quality * 0.3;
+        let new_fitness =
+            speed_score * 0.3 + (if success { 1.0 } else { 0.0 }) * 0.4 + quality * 0.3;
         self.fitness = self.fitness * 0.7 + new_fitness * 0.3;
     }
 }
@@ -219,7 +226,10 @@ impl Chromosome {
             .as_secs_f64();
 
         Self {
-            chromosome_id: format!("CHR_{}", uuid::Uuid::new_v4().to_string()[..8].to_uppercase()),
+            chromosome_id: format!(
+                "CHR_{}",
+                uuid::Uuid::new_v4().to_string()[..8].to_uppercase()
+            ),
             name: name.to_string(),
             genes: Vec::new(),
             fitness: 0.5,
@@ -346,7 +356,8 @@ impl CodeDna {
         let mut genes = Vec::new();
 
         // Function extraction (fn név(...))
-        let fn_pattern = regex::Regex::new(r"(?s)((?:pub\s+)?(?:async\s+)?fn\s+\w+[^{]+\{[^}]*\})").unwrap();
+        let fn_pattern =
+            regex::Regex::new(r"(?s)((?:pub\s+)?(?:async\s+)?fn\s+\w+[^{]+\{[^}]*\})").unwrap();
         for cap in fn_pattern.captures_iter(code) {
             let func_code = cap.get(1).map(|m| m.as_str()).unwrap_or("");
             let mut gene = Gene::new(GeneType::Function, func_code);
@@ -359,7 +370,8 @@ impl CodeDna {
         }
 
         // Struct extraction
-        let struct_pattern = regex::Regex::new(r"(?s)((?:pub\s+)?struct\s+\w+[^{]*\{[^}]*\})").unwrap();
+        let struct_pattern =
+            regex::Regex::new(r"(?s)((?:pub\s+)?struct\s+\w+[^{]*\{[^}]*\})").unwrap();
         for cap in struct_pattern.captures_iter(code) {
             let struct_code = cap.get(1).map(|m| m.as_str()).unwrap_or("");
             let mut gene = Gene::new(GeneType::Class, struct_code);
@@ -371,7 +383,8 @@ impl CodeDna {
         }
 
         // Impl block extraction
-        let impl_pattern = regex::Regex::new(r"(?s)(impl(?:<[^>]+>)?\s+\w+[^{]*\{[^}]*\})").unwrap();
+        let impl_pattern =
+            regex::Regex::new(r"(?s)(impl(?:<[^>]+>)?\s+\w+[^{]*\{[^}]*\})").unwrap();
         for cap in impl_pattern.captures_iter(code) {
             let impl_code = cap.get(1).map(|m| m.as_str()).unwrap_or("");
             let mut gene = Gene::new(GeneType::Class, impl_code);
@@ -446,7 +459,12 @@ impl CodeDna {
         if let Some(cap) = var_pattern.captures(&result) {
             if let Some(m) = cap.get(1) {
                 let old_var = m.as_str();
-                if !["self", "true", "false", "let", "mut", "fn", "if", "else", "for", "while", "return", "pub", "struct", "impl", "use", "mod"].contains(&old_var) {
+                if ![
+                    "self", "true", "false", "let", "mut", "fn", "if", "else", "for", "while",
+                    "return", "pub", "struct", "impl", "use", "mod",
+                ]
+                .contains(&old_var)
+                {
                     let new_var = format!("{}_v2", old_var);
                     result = result.replace(old_var, &new_var);
                 }
@@ -559,7 +577,9 @@ impl CodeDna {
 
             // Winner = highest fitness
             if let Some(winner) = tournament.iter().max_by(|a, b| {
-                a.fitness.partial_cmp(&b.fitness).unwrap_or(std::cmp::Ordering::Equal)
+                a.fitness
+                    .partial_cmp(&b.fitness)
+                    .unwrap_or(std::cmp::Ordering::Equal)
             }) {
                 selected.push((*winner).clone());
             }
@@ -622,7 +642,9 @@ impl CodeDna {
 
             // Track improvements
             if let Some(best) = population.iter().max_by(|a, b| {
-                a.fitness.partial_cmp(&b.fitness).unwrap_or(std::cmp::Ordering::Equal)
+                a.fitness
+                    .partial_cmp(&b.fitness)
+                    .unwrap_or(std::cmp::Ordering::Equal)
             }) {
                 if best.fitness > result.best_fitness {
                     result.best_fitness = best.fitness;
@@ -664,7 +686,11 @@ impl CodeDna {
             genes.retain(|g| g.gene_type == gt);
         }
 
-        genes.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap_or(std::cmp::Ordering::Equal));
+        genes.sort_by(|a, b| {
+            b.fitness
+                .partial_cmp(&a.fitness)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         genes.truncate(limit);
         genes
     }
@@ -687,18 +713,34 @@ impl CodeDna {
         let best_genes = self.get_best_genes(None, 5).await;
 
         let mut map = HashMap::new();
-        map.insert("total_genes".to_string(), serde_json::json!(stats.total_genes));
-        map.insert("generations_evolved".to_string(), serde_json::json!(stats.generations_evolved));
-        map.insert("best_fitness".to_string(), serde_json::json!(stats.best_fitness));
+        map.insert(
+            "total_genes".to_string(),
+            serde_json::json!(stats.total_genes),
+        );
+        map.insert(
+            "generations_evolved".to_string(),
+            serde_json::json!(stats.generations_evolved),
+        );
+        map.insert(
+            "best_fitness".to_string(),
+            serde_json::json!(stats.best_fitness),
+        );
         map.insert("mutations".to_string(), serde_json::json!(stats.mutations));
-        map.insert("crossovers".to_string(), serde_json::json!(stats.crossovers));
-        map.insert("best_genes".to_string(), serde_json::json!(
-            best_genes.iter().map(|g| serde_json::json!({
-                "id": g.gene_id,
-                "type": g.gene_type.to_string(),
-                "fitness": g.fitness
-            })).collect::<Vec<_>>()
-        ));
+        map.insert(
+            "crossovers".to_string(),
+            serde_json::json!(stats.crossovers),
+        );
+        map.insert(
+            "best_genes".to_string(),
+            serde_json::json!(best_genes
+                .iter()
+                .map(|g| serde_json::json!({
+                    "id": g.gene_id,
+                    "type": g.gene_type.to_string(),
+                    "fitness": g.fitness
+                }))
+                .collect::<Vec<_>>()),
+        );
         map
     }
 }
@@ -827,8 +869,14 @@ pub struct Point {
             ..Default::default()
         });
 
-        let gene1 = Gene::new(GeneType::Function, "fn a() {\n    let x = 1;\n    let y = 2;\n}");
-        let gene2 = Gene::new(GeneType::Function, "fn b() {\n    let z = 3;\n    let w = 4;\n}");
+        let gene1 = Gene::new(
+            GeneType::Function,
+            "fn a() {\n    let x = 1;\n    let y = 2;\n}",
+        );
+        let gene2 = Gene::new(
+            GeneType::Function,
+            "fn b() {\n    let z = 3;\n    let w = 4;\n}",
+        );
 
         let child = dna.crossover(&gene1, &gene2).await.unwrap();
         assert!(!child.gene_id.is_empty());

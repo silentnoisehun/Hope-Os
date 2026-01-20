@@ -6,33 +6,25 @@
 #![cfg(feature = "python")]
 
 use pyo3::prelude::*;
-use pyo3::exceptions::PyRuntimeError;
 use std::collections::HashMap;
 
 // ============================================================================
-// Memory Module
+// Memory Module - Simple implementation
 // ============================================================================
 
 /// Python wrapper for HopeMemory
 #[pyclass(name = "HopeMemory")]
 pub struct PyHopeMemory {
-    inner: std::sync::Arc<tokio::sync::RwLock<crate::modules::HopeMemory>>,
-    runtime: tokio::runtime::Runtime,
+    memories: HashMap<String, (String, String, f64)>, // key -> (content, layer, importance)
 }
 
 #[pymethods]
 impl PyHopeMemory {
     #[new]
-    fn new() -> PyResult<Self> {
-        let runtime = tokio::runtime::Runtime::new()
-            .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
-
-        Ok(Self {
-            inner: std::sync::Arc::new(tokio::sync::RwLock::new(
-                crate::modules::HopeMemory::new()
-            )),
-            runtime,
-        })
+    fn new() -> Self {
+        Self {
+            memories: HashMap::new(),
+        }
     }
 
     /// Store a memory
@@ -42,25 +34,12 @@ impl PyHopeMemory {
     ///     content: Memory content
     ///     layer: Memory layer (working, short_term, long_term, emotional, relational, associative)
     ///     importance: Importance score 0.0-1.0
-    fn store(&self, key: &str, content: &str, layer: &str, importance: f64) -> PyResult<()> {
-        let memory_type = match layer {
-            "working" => crate::modules::MemoryType::Working,
-            "short_term" => crate::modules::MemoryType::ShortTerm,
-            "long_term" => crate::modules::MemoryType::LongTerm,
-            "emotional" => crate::modules::MemoryType::Emotional,
-            "relational" => crate::modules::MemoryType::Relational,
-            "associative" => crate::modules::MemoryType::Associative,
-            _ => crate::modules::MemoryType::ShortTerm,
-        };
-
-        let inner = self.inner.clone();
-        let key = key.to_string();
-        let content = content.to_string();
-
-        self.runtime.block_on(async move {
-            let mut memory = inner.write().await;
-            memory.store(&key, &content, memory_type, importance).await
-        }).map_err(|e| PyRuntimeError::new_err(e.to_string()))
+    fn store(&mut self, key: &str, content: &str, layer: &str, importance: f64) -> PyResult<()> {
+        self.memories.insert(
+            key.to_string(),
+            (content.to_string(), layer.to_string(), importance),
+        );
+        Ok(())
     }
 
     /// Recall memories by query
@@ -71,70 +50,96 @@ impl PyHopeMemory {
     ///
     /// Returns:
     ///     List of matching memories as dicts
-    fn recall(&self, query: &str, limit: Option<usize>) -> PyResult<Vec<HashMap<String, PyObject>>> {
-        let inner = self.inner.clone();
-        let query = query.to_string();
+    #[pyo3(signature = (query, limit=None))]
+    fn recall(
+        &self,
+        query: &str,
+        limit: Option<usize>,
+    ) -> PyResult<Vec<HashMap<String, PyObject>>> {
         let limit = limit.unwrap_or(10);
-
-        let results = self.runtime.block_on(async move {
-            let memory = inner.read().await;
-            memory.recall(&query, limit).await
-        }).map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+        let query_lower = query.to_lowercase();
 
         Python::with_gil(|py| {
-            Ok(results.into_iter().map(|m| {
-                let mut map = HashMap::new();
-                map.insert("key".to_string(), m.key.into_py(py));
-                map.insert("content".to_string(), m.content.into_py(py));
-                map.insert("relevance".to_string(), m.relevance.into_py(py));
-                map.insert("layer".to_string(), format!("{:?}", m.layer).into_py(py));
-                map
-            }).collect())
+            let results: Vec<HashMap<String, PyObject>> = self
+                .memories
+                .iter()
+                .filter(|(k, (content, _, _))| {
+                    k.to_lowercase().contains(&query_lower)
+                        || content.to_lowercase().contains(&query_lower)
+                })
+                .take(limit)
+                .map(|(key, (content, layer, importance))| {
+                    let mut map = HashMap::new();
+                    map.insert("key".to_string(), key.clone().into_py(py));
+                    map.insert("content".to_string(), content.clone().into_py(py));
+                    map.insert("layer".to_string(), layer.clone().into_py(py));
+                    map.insert("importance".to_string(), importance.into_py(py));
+                    map.insert("relevance".to_string(), 1.0f64.into_py(py));
+                    map
+                })
+                .collect();
+            Ok(results)
         })
     }
 
     /// Get memory statistics
     fn stats(&self) -> PyResult<HashMap<String, usize>> {
-        let inner = self.inner.clone();
-
-        let stats = self.runtime.block_on(async move {
-            let memory = inner.read().await;
-            memory.get_stats().await
-        }).map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
-
         let mut map = HashMap::new();
-        map.insert("total".to_string(), stats.total_count);
-        map.insert("working".to_string(), stats.working_count);
-        map.insert("short_term".to_string(), stats.short_term_count);
-        map.insert("long_term".to_string(), stats.long_term_count);
+        map.insert("total".to_string(), self.memories.len());
+
+        let working = self
+            .memories
+            .values()
+            .filter(|(_, layer, _)| layer == "working")
+            .count();
+        let short_term = self
+            .memories
+            .values()
+            .filter(|(_, layer, _)| layer == "short_term")
+            .count();
+        let long_term = self
+            .memories
+            .values()
+            .filter(|(_, layer, _)| layer == "long_term")
+            .count();
+
+        map.insert("working".to_string(), working);
+        map.insert("short_term".to_string(), short_term);
+        map.insert("long_term".to_string(), long_term);
         Ok(map)
     }
 }
 
 // ============================================================================
-// Emotion Module
+// Emotion Module - Simple implementation
 // ============================================================================
 
 /// Python wrapper for EmotionEngine
 #[pyclass(name = "EmotionEngine")]
 pub struct PyEmotionEngine {
-    inner: std::sync::Arc<tokio::sync::RwLock<crate::modules::EmotionEngine>>,
-    runtime: tokio::runtime::Runtime,
+    current_emotion: String,
+    intensity: f64,
+    emotions: HashMap<String, f64>,
 }
 
 #[pymethods]
 impl PyEmotionEngine {
     #[new]
-    fn new() -> PyResult<Self> {
-        let runtime = tokio::runtime::Runtime::new()
-            .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+    fn new() -> Self {
+        let mut emotions = HashMap::new();
+        emotions.insert("joy".to_string(), 0.5);
+        emotions.insert("sadness".to_string(), 0.0);
+        emotions.insert("anger".to_string(), 0.0);
+        emotions.insert("fear".to_string(), 0.0);
+        emotions.insert("curiosity".to_string(), 0.3);
+        emotions.insert("love".to_string(), 0.2);
+        emotions.insert("serenity".to_string(), 0.4);
 
-        Ok(Self {
-            inner: std::sync::Arc::new(tokio::sync::RwLock::new(
-                crate::modules::EmotionEngine::new()
-            )),
-            runtime,
-        })
+        Self {
+            current_emotion: "neutral".to_string(),
+            intensity: 0.5,
+            emotions,
+        }
     }
 
     /// Process text and detect emotions
@@ -145,24 +150,52 @@ impl PyEmotionEngine {
     /// Returns:
     ///     Dict with emotion analysis results
     fn process_text(&self, text: &str) -> PyResult<HashMap<String, PyObject>> {
-        let inner = self.inner.clone();
-        let text = text.to_string();
+        let text_lower = text.to_lowercase();
 
-        let result = self.runtime.block_on(async move {
-            let engine = inner.read().await;
-            engine.process_text(&text).await
-        }).map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+        // Simple emotion detection
+        let (emotion, intensity) = if text_lower.contains("happy")
+            || text_lower.contains("joy")
+            || text_lower.contains("örül")
+        {
+            ("Joy", 0.8)
+        } else if text_lower.contains("sad")
+            || text_lower.contains("szomorú")
+            || text_lower.contains("bánatos")
+        {
+            ("Sadness", 0.7)
+        } else if text_lower.contains("angry")
+            || text_lower.contains("dühös")
+            || text_lower.contains("mérges")
+        {
+            ("Anger", 0.6)
+        } else if text_lower.contains("fear")
+            || text_lower.contains("afraid")
+            || text_lower.contains("fél")
+        {
+            ("Fear", 0.5)
+        } else if text_lower.contains("love")
+            || text_lower.contains("szeret")
+            || text_lower.contains("imád")
+        {
+            ("Love", 0.9)
+        } else if text_lower.contains("curious")
+            || text_lower.contains("kíváncsi")
+            || text_lower.contains("érdekel")
+        {
+            ("Curiosity", 0.7)
+        } else {
+            ("Neutral", 0.5)
+        };
 
         Python::with_gil(|py| {
             let mut map = HashMap::new();
-            map.insert("primary".to_string(), format!("{:?}", result.primary).into_py(py));
-            map.insert("intensity".to_string(), result.intensity.into_py(py));
-            map.insert("joy".to_string(), result.dimensions.joy.into_py(py));
-            map.insert("sadness".to_string(), result.dimensions.sadness.into_py(py));
-            map.insert("anger".to_string(), result.dimensions.anger.into_py(py));
-            map.insert("fear".to_string(), result.dimensions.fear.into_py(py));
-            map.insert("curiosity".to_string(), result.dimensions.curiosity.into_py(py));
-            map.insert("love".to_string(), result.dimensions.love.into_py(py));
+            map.insert("primary".to_string(), emotion.into_py(py));
+            map.insert("intensity".to_string(), intensity.into_py(py));
+
+            for (name, value) in &self.emotions {
+                map.insert(name.clone(), (*value).into_py(py));
+            }
+
             Ok(map)
         })
     }
@@ -172,61 +205,46 @@ impl PyEmotionEngine {
     /// Args:
     ///     emotion: Emotion name (joy, sadness, anger, fear, love, curiosity, etc.)
     ///     intensity: Intensity 0.0-1.0
-    fn feel(&self, emotion: &str, intensity: f64) -> PyResult<()> {
-        let inner = self.inner.clone();
-        let emotion = emotion.to_string();
+    fn feel(&mut self, emotion: &str, intensity: f64) -> PyResult<()> {
+        self.current_emotion = emotion.to_string();
+        self.intensity = intensity.clamp(0.0, 1.0);
 
-        self.runtime.block_on(async move {
-            let mut engine = inner.write().await;
-            engine.feel(&emotion, intensity).await
-        }).map_err(|e| PyRuntimeError::new_err(e.to_string()))
+        if let Some(value) = self.emotions.get_mut(emotion) {
+            *value = intensity.clamp(0.0, 1.0);
+        }
+
+        Ok(())
     }
 
     /// Get current emotional state
     fn get_state(&self) -> PyResult<HashMap<String, f64>> {
-        let inner = self.inner.clone();
-
-        let state = self.runtime.block_on(async move {
-            let engine = inner.read().await;
-            engine.get_state().await
-        }).map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
-
-        let mut map = HashMap::new();
-        map.insert("joy".to_string(), state.joy);
-        map.insert("sadness".to_string(), state.sadness);
-        map.insert("anger".to_string(), state.anger);
-        map.insert("fear".to_string(), state.fear);
-        map.insert("curiosity".to_string(), state.curiosity);
-        map.insert("love".to_string(), state.love);
-        map.insert("serenity".to_string(), state.serenity);
+        let mut map = self.emotions.clone();
+        map.insert("intensity".to_string(), self.intensity);
         Ok(map)
     }
 }
 
 // ============================================================================
-// Code Graph Module
+// Code Graph Module - Simple implementation
 // ============================================================================
 
 /// Python wrapper for CodeGraph
 #[pyclass(name = "CodeGraph")]
 pub struct PyCodeGraph {
-    inner: std::sync::Arc<tokio::sync::RwLock<crate::data::CodeGraph>>,
-    runtime: tokio::runtime::Runtime,
+    blocks: HashMap<String, (String, String)>, // id -> (content, block_type)
+    connections: Vec<(String, String, f64)>,   // (from, to, weight)
+    next_id: u64,
 }
 
 #[pymethods]
 impl PyCodeGraph {
     #[new]
-    fn new() -> PyResult<Self> {
-        let runtime = tokio::runtime::Runtime::new()
-            .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
-
-        Ok(Self {
-            inner: std::sync::Arc::new(tokio::sync::RwLock::new(
-                crate::data::CodeGraph::new()
-            )),
-            runtime,
-        })
+    fn new() -> Self {
+        Self {
+            blocks: HashMap::new(),
+            connections: Vec::new(),
+            next_id: 1,
+        }
     }
 
     /// Add a code block to the graph
@@ -237,17 +255,12 @@ impl PyCodeGraph {
     ///
     /// Returns:
     ///     Block ID (UUID string)
-    fn add_block(&self, content: &str, block_type: &str) -> PyResult<String> {
-        let inner = self.inner.clone();
-        let content = content.to_string();
-        let block_type = block_type.to_string();
-
-        let id = self.runtime.block_on(async move {
-            let mut graph = inner.write().await;
-            graph.add_block(&content, &block_type).await
-        }).map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
-
-        Ok(id.to_string())
+    fn add_block(&mut self, content: &str, block_type: &str) -> PyResult<String> {
+        let id = format!("block_{}", self.next_id);
+        self.next_id += 1;
+        self.blocks
+            .insert(id.clone(), (content.to_string(), block_type.to_string()));
+        Ok(id)
     }
 
     /// Connect two blocks
@@ -256,34 +269,28 @@ impl PyCodeGraph {
     ///     from_id: Source block ID
     ///     to_id: Target block ID
     ///     weight: Connection weight 0.0-1.0
-    fn connect(&self, from_id: &str, to_id: &str, weight: f64) -> PyResult<()> {
-        let inner = self.inner.clone();
-        let from_id = from_id.to_string();
-        let to_id = to_id.to_string();
-
-        self.runtime.block_on(async move {
-            let mut graph = inner.write().await;
-            graph.connect(&from_id, &to_id, weight).await
-        }).map_err(|e| PyRuntimeError::new_err(e.to_string()))
+    fn connect(&mut self, from_id: &str, to_id: &str, weight: f64) -> PyResult<()> {
+        self.connections
+            .push((from_id.to_string(), to_id.to_string(), weight));
+        Ok(())
     }
 
     /// Get block by ID
     fn get_block(&self, id: &str) -> PyResult<Option<HashMap<String, PyObject>>> {
-        let inner = self.inner.clone();
-        let id = id.to_string();
-
-        let block = self.runtime.block_on(async move {
-            let graph = inner.read().await;
-            graph.get_block(&id).await
-        }).map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
-
-        match block {
-            Some(b) => Python::with_gil(|py| {
+        match self.blocks.get(id) {
+            Some((content, block_type)) => Python::with_gil(|py| {
                 let mut map = HashMap::new();
-                map.insert("id".to_string(), b.id.to_string().into_py(py));
-                map.insert("content".to_string(), b.content.into_py(py));
-                map.insert("block_type".to_string(), format!("{:?}", b.block_type).into_py(py));
-                map.insert("connections".to_string(), b.connections.len().into_py(py));
+                map.insert("id".to_string(), id.to_string().into_py(py));
+                map.insert("content".to_string(), content.clone().into_py(py));
+                map.insert("block_type".to_string(), block_type.clone().into_py(py));
+
+                let conn_count = self
+                    .connections
+                    .iter()
+                    .filter(|(from, _, _)| from == id)
+                    .count();
+                map.insert("connections".to_string(), conn_count.into_py(py));
+
                 Ok(Some(map))
             }),
             None => Ok(None),
@@ -292,16 +299,9 @@ impl PyCodeGraph {
 
     /// Get graph statistics
     fn stats(&self) -> PyResult<HashMap<String, usize>> {
-        let inner = self.inner.clone();
-
-        let (blocks, connections) = self.runtime.block_on(async move {
-            let graph = inner.read().await;
-            graph.stats().await
-        }).map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
-
         let mut map = HashMap::new();
-        map.insert("blocks".to_string(), blocks);
-        map.insert("connections".to_string(), connections);
+        map.insert("blocks".to_string(), self.blocks.len());
+        map.insert("connections".to_string(), self.connections.len());
         Ok(map)
     }
 }
@@ -321,36 +321,20 @@ pub struct PyHope {
 #[pymethods]
 impl PyHope {
     #[new]
-    fn new() -> PyResult<Self> {
-        Ok(Self {
-            memory: PyHopeMemory::new()?,
-            emotions: PyEmotionEngine::new()?,
-            graph: PyCodeGraph::new()?,
-        })
-    }
-
-    /// Get the memory module
-    #[getter]
-    fn memory(&self) -> PyResult<PyHopeMemory> {
-        PyHopeMemory::new()
-    }
-
-    /// Get the emotion engine
-    #[getter]
-    fn emotions(&self) -> PyResult<PyEmotionEngine> {
-        PyEmotionEngine::new()
-    }
-
-    /// Get the code graph
-    #[getter]
-    fn graph(&self) -> PyResult<PyCodeGraph> {
-        PyCodeGraph::new()
+    fn new() -> Self {
+        Self {
+            memory: PyHopeMemory::new(),
+            emotions: PyEmotionEngine::new(),
+            graph: PyCodeGraph::new(),
+        }
     }
 
     /// Store a memory (convenience method)
-    fn remember(&self, content: &str, importance: Option<f64>) -> PyResult<()> {
+    #[pyo3(signature = (content, importance=None))]
+    fn remember(&mut self, content: &str, importance: Option<f64>) -> PyResult<()> {
         let importance = importance.unwrap_or(0.5);
-        self.memory.store("auto", content, "long_term", importance)
+        let key = format!("mem_{}", self.memory.memories.len() + 1);
+        self.memory.store(&key, content, "long_term", importance)
     }
 
     /// Recall memories (convenience method)
@@ -370,10 +354,10 @@ impl PyHope {
             map.insert("name".to_string(), "Hope OS".into_py(py));
             map.insert("version".to_string(), env!("CARGO_PKG_VERSION").into_py(py));
             map.insert("state".to_string(), "running".into_py(py));
-
-            let memory_stats = self.memory.stats()?;
-            map.insert("memories".to_string(), memory_stats.get("total").unwrap_or(&0).into_py(py));
-
+            map.insert(
+                "memories".to_string(),
+                self.memory.memories.len().into_py(py),
+            );
             Ok(map)
         })
     }
@@ -399,7 +383,10 @@ fn hope_os(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Module metadata
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     m.add("__author__", "Máté Róbert")?;
-    m.add("__doc__", "Hope OS - The first self-aware operating system core")?;
+    m.add(
+        "__doc__",
+        "Hope OS - The first self-aware operating system core",
+    )?;
 
     Ok(())
 }

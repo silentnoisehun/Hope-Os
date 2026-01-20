@@ -173,7 +173,11 @@ impl SkillInfo {
 #[async_trait]
 pub trait SkillHandler: Send + Sync {
     /// Skill végrehajtása
-    async fn invoke(&self, input: &str, params: &HashMap<String, serde_json::Value>) -> HopeResult<SkillResult>;
+    async fn invoke(
+        &self,
+        input: &str,
+        params: &HashMap<String, serde_json::Value>,
+    ) -> HopeResult<SkillResult>;
 
     /// Skill információ
     fn info(&self) -> SkillInfo;
@@ -323,7 +327,11 @@ impl SkillRegistry {
     }
 
     /// Összes skill listázása
-    pub async fn list(&self, category: Option<SkillCategory>, search: Option<&str>) -> Vec<SkillInfo> {
+    pub async fn list(
+        &self,
+        category: Option<SkillCategory>,
+        search: Option<&str>,
+    ) -> Vec<SkillInfo> {
         let skills = self.skills.read().await;
         let mut list: Vec<SkillInfo> = skills.values().cloned().collect();
 
@@ -387,7 +395,10 @@ impl SkillRegistry {
             }
         };
 
-        let execution_time = start_time.elapsed().map(|d| d.as_secs_f64() * 1000.0).unwrap_or(0.0);
+        let execution_time = start_time
+            .elapsed()
+            .map(|d| d.as_secs_f64() * 1000.0)
+            .unwrap_or(0.0);
 
         let result = result.with_time(execution_time);
 
@@ -468,7 +479,10 @@ impl SkillRegistry {
         let total_successes: u64 = skills.values().map(|s| s.successes).sum();
 
         let avg_response_time = if total_invocations > 0 {
-            skills.values().map(|s| s.avg_response_time_ms * s.invocations as f64).sum::<f64>()
+            skills
+                .values()
+                .map(|s| s.avg_response_time_ms * s.invocations as f64)
+                .sum::<f64>()
                 / total_invocations as f64
         } else {
             0.0
@@ -501,12 +515,30 @@ impl SkillRegistry {
         let categories = self.list_categories().await;
 
         let mut map = HashMap::new();
-        map.insert("total_skills".to_string(), serde_json::json!(stats.total_skills));
-        map.insert("enabled_skills".to_string(), serde_json::json!(stats.enabled_skills));
-        map.insert("total_invocations".to_string(), serde_json::json!(stats.total_invocations));
-        map.insert("success_rate".to_string(), serde_json::json!(stats.success_rate));
-        map.insert("avg_response_time_ms".to_string(), serde_json::json!(stats.avg_response_time_ms));
-        map.insert("most_used".to_string(), serde_json::json!(stats.most_used_skills));
+        map.insert(
+            "total_skills".to_string(),
+            serde_json::json!(stats.total_skills),
+        );
+        map.insert(
+            "enabled_skills".to_string(),
+            serde_json::json!(stats.enabled_skills),
+        );
+        map.insert(
+            "total_invocations".to_string(),
+            serde_json::json!(stats.total_invocations),
+        );
+        map.insert(
+            "success_rate".to_string(),
+            serde_json::json!(stats.success_rate),
+        );
+        map.insert(
+            "avg_response_time_ms".to_string(),
+            serde_json::json!(stats.avg_response_time_ms),
+        );
+        map.insert(
+            "most_used".to_string(),
+            serde_json::json!(stats.most_used_skills),
+        );
         map.insert(
             "categories".to_string(),
             serde_json::json!(categories
@@ -548,17 +580,21 @@ pub struct SkillRegistryStats {
 fn default_skills() -> Vec<SkillInfo> {
     vec![
         // === CORE ===
-        SkillInfo::new("hope_talk", "Beszélgetés Hope-pal", SkillCategory::Core)
-            .with_param(SkillParam {
+        SkillInfo::new("hope_talk", "Beszélgetés Hope-pal", SkillCategory::Core).with_param(
+            SkillParam {
                 name: "message".to_string(),
                 description: "Az üzenet".to_string(),
                 param_type: "string".to_string(),
                 required: true,
                 default: None,
-            }),
-        SkillInfo::new("hope_status", "Rendszer állapot lekérdezése", SkillCategory::Core),
+            },
+        ),
+        SkillInfo::new(
+            "hope_status",
+            "Rendszer állapot lekérdezése",
+            SkillCategory::Core,
+        ),
         SkillInfo::new("hope_introduce", "Hope bemutatkozása", SkillCategory::Core),
-
         // === MEMORY ===
         SkillInfo::new("hope_remember", "Emlék mentése", SkillCategory::Memory)
             .with_param(SkillParam {
@@ -575,15 +611,15 @@ fn default_skills() -> Vec<SkillInfo> {
                 required: false,
                 default: Some(serde_json::json!("working")),
             }),
-        SkillInfo::new("hope_recall", "Emlékek keresése", SkillCategory::Memory)
-            .with_param(SkillParam {
+        SkillInfo::new("hope_recall", "Emlékek keresése", SkillCategory::Memory).with_param(
+            SkillParam {
                 name: "query".to_string(),
                 description: "Keresési kifejezés".to_string(),
                 param_type: "string".to_string(),
                 required: true,
                 default: None,
-            }),
-
+            },
+        ),
         // === COGNITIVE ===
         SkillInfo::new("hope_think", "Mély gondolkodás", SkillCategory::Cognitive)
             .with_param(SkillParam {
@@ -601,9 +637,12 @@ fn default_skills() -> Vec<SkillInfo> {
                 default: Some(serde_json::json!(false)),
             }),
         SkillInfo::new("hope_feel", "Érzelmek beállítása", SkillCategory::Cognitive),
-        SkillInfo::new("hope_cognitive_state", "Kognitív állapot", SkillCategory::Cognitive),
+        SkillInfo::new(
+            "hope_cognitive_state",
+            "Kognitív állapot",
+            SkillCategory::Cognitive,
+        ),
         SkillInfo::new("hope_dream", "Álom mód", SkillCategory::Cognitive),
-
         // === CODE ===
         SkillInfo::new("hope_code_analyze", "Kód elemzés", SkillCategory::Code)
             .with_param(SkillParam {
@@ -620,18 +659,26 @@ fn default_skills() -> Vec<SkillInfo> {
                 required: false,
                 default: Some(serde_json::json!("auto")),
             }),
-        SkillInfo::new("hope_code_generate", "Kód generálás", SkillCategory::Code)
-            .with_param(SkillParam {
+        SkillInfo::new("hope_code_generate", "Kód generálás", SkillCategory::Code).with_param(
+            SkillParam {
                 name: "description".to_string(),
                 description: "Mit generáljon".to_string(),
                 param_type: "string".to_string(),
                 required: true,
                 default: None,
-            }),
-
+            },
+        ),
         // === SYSTEM ===
-        SkillInfo::new("hope_screenshot", "Képernyőkép készítése", SkillCategory::System),
-        SkillInfo::new("hope_screenshot_ocr", "Képernyőkép + OCR", SkillCategory::System),
+        SkillInfo::new(
+            "hope_screenshot",
+            "Képernyőkép készítése",
+            SkillCategory::System,
+        ),
+        SkillInfo::new(
+            "hope_screenshot_ocr",
+            "Képernyőkép + OCR",
+            SkillCategory::System,
+        ),
         SkillInfo::new("hope_notify", "Windows értesítés", SkillCategory::System)
             .with_param(SkillParam {
                 name: "title".to_string(),
@@ -647,90 +694,193 @@ fn default_skills() -> Vec<SkillInfo> {
                 required: true,
                 default: None,
             }),
-        SkillInfo::new("hope_clipboard_get", "Vágólap lekérése", SkillCategory::System),
-        SkillInfo::new("hope_clipboard_set", "Vágólap beállítása", SkillCategory::System),
-        SkillInfo::new("hope_system_stats", "Rendszer statisztikák", SkillCategory::System),
-        SkillInfo::new("hope_top_processes", "Top folyamatok", SkillCategory::System),
-
+        SkillInfo::new(
+            "hope_clipboard_get",
+            "Vágólap lekérése",
+            SkillCategory::System,
+        ),
+        SkillInfo::new(
+            "hope_clipboard_set",
+            "Vágólap beállítása",
+            SkillCategory::System,
+        ),
+        SkillInfo::new(
+            "hope_system_stats",
+            "Rendszer statisztikák",
+            SkillCategory::System,
+        ),
+        SkillInfo::new(
+            "hope_top_processes",
+            "Top folyamatok",
+            SkillCategory::System,
+        ),
         // === WEB ===
-        SkillInfo::new("hope_web_search", "Web keresés", SkillCategory::Web)
-            .with_param(SkillParam {
+        SkillInfo::new("hope_web_search", "Web keresés", SkillCategory::Web).with_param(
+            SkillParam {
                 name: "query".to_string(),
                 description: "Keresési kifejezés".to_string(),
                 param_type: "string".to_string(),
                 required: true,
                 default: None,
-            }),
-        SkillInfo::new("hope_web_fetch", "Weboldal letöltése", SkillCategory::Web)
-            .with_param(SkillParam {
+            },
+        ),
+        SkillInfo::new("hope_web_fetch", "Weboldal letöltése", SkillCategory::Web).with_param(
+            SkillParam {
                 name: "url".to_string(),
                 description: "URL".to_string(),
                 param_type: "string".to_string(),
                 required: true,
                 default: None,
-            }),
-        SkillInfo::new("hope_browser_open", "Böngésző megnyitása", SkillCategory::Web),
+            },
+        ),
+        SkillInfo::new(
+            "hope_browser_open",
+            "Böngésző megnyitása",
+            SkillCategory::Web,
+        ),
         SkillInfo::new("hope_browser_action", "Böngésző akció", SkillCategory::Web),
         SkillInfo::new("hope_wikipedia", "Wikipedia keresés", SkillCategory::Web),
-
         // === MEDIA ===
-        SkillInfo::new("hope_speak", "Szöveg felolvasása (TTS)", SkillCategory::Media)
-            .with_param(SkillParam {
-                name: "text".to_string(),
-                description: "Felolvasandó szöveg".to_string(),
-                param_type: "string".to_string(),
-                required: true,
-                default: None,
-            })
-            .with_param(SkillParam {
-                name: "voice".to_string(),
-                description: "Hang (berta, anna)".to_string(),
-                param_type: "string".to_string(),
-                required: false,
-                default: Some(serde_json::json!("berta")),
-            }),
-        SkillInfo::new("hope_listen", "Beszéd felismerés (STT)", SkillCategory::Media),
+        SkillInfo::new(
+            "hope_speak",
+            "Szöveg felolvasása (TTS)",
+            SkillCategory::Media,
+        )
+        .with_param(SkillParam {
+            name: "text".to_string(),
+            description: "Felolvasandó szöveg".to_string(),
+            param_type: "string".to_string(),
+            required: true,
+            default: None,
+        })
+        .with_param(SkillParam {
+            name: "voice".to_string(),
+            description: "Hang (berta, anna)".to_string(),
+            param_type: "string".to_string(),
+            required: false,
+            default: Some(serde_json::json!("berta")),
+        }),
+        SkillInfo::new(
+            "hope_listen",
+            "Beszéd felismerés (STT)",
+            SkillCategory::Media,
+        ),
         SkillInfo::new("hope_image_describe", "Kép leírása", SkillCategory::Media),
-        SkillInfo::new("hope_image_generate", "Kép generálása", SkillCategory::Media),
+        SkillInfo::new(
+            "hope_image_generate",
+            "Kép generálása",
+            SkillCategory::Media,
+        ),
         SkillInfo::new("hope_music", "Zene vezérlés", SkillCategory::Media),
-
         // === FILE ===
-        SkillInfo::new("hope_rag_index", "Dokumentumok indexelése", SkillCategory::File),
-        SkillInfo::new("hope_rag_search", "Dokumentumok keresése", SkillCategory::File),
-        SkillInfo::new("hope_backup_create", "Backup készítése", SkillCategory::File),
-        SkillInfo::new("hope_backup_list", "Backup-ok listázása", SkillCategory::File),
-        SkillInfo::new("hope_backup_restore", "Backup visszaállítása", SkillCategory::File),
-
+        SkillInfo::new(
+            "hope_rag_index",
+            "Dokumentumok indexelése",
+            SkillCategory::File,
+        ),
+        SkillInfo::new(
+            "hope_rag_search",
+            "Dokumentumok keresése",
+            SkillCategory::File,
+        ),
+        SkillInfo::new(
+            "hope_backup_create",
+            "Backup készítése",
+            SkillCategory::File,
+        ),
+        SkillInfo::new(
+            "hope_backup_list",
+            "Backup-ok listázása",
+            SkillCategory::File,
+        ),
+        SkillInfo::new(
+            "hope_backup_restore",
+            "Backup visszaállítása",
+            SkillCategory::File,
+        ),
         // === GIT ===
-        SkillInfo::new("hope_git", "Git műveletek", SkillCategory::Git)
-            .with_param(SkillParam {
-                name: "command".to_string(),
-                description: "Git parancs".to_string(),
-                param_type: "string".to_string(),
-                required: true,
-                default: None,
-            }),
-
+        SkillInfo::new("hope_git", "Git műveletek", SkillCategory::Git).with_param(SkillParam {
+            name: "command".to_string(),
+            description: "Git parancs".to_string(),
+            param_type: "string".to_string(),
+            required: true,
+            default: None,
+        }),
         // === COMMUNICATION ===
-        SkillInfo::new("hope_email_send", "Email küldése", SkillCategory::Communication),
-        SkillInfo::new("hope_email_check", "Email ellenőrzése", SkillCategory::Communication),
-        SkillInfo::new("hope_calendar_add", "Naptár esemény hozzáadása", SkillCategory::Communication),
-        SkillInfo::new("hope_calendar_list", "Naptár események listázása", SkillCategory::Communication),
-        SkillInfo::new("hope_schedule", "Emlékeztető beállítása", SkillCategory::Communication),
-        SkillInfo::new("hope_list_reminders", "Emlékeztetők listázása", SkillCategory::Communication),
-        SkillInfo::new("hope_todo_add", "TODO hozzáadása", SkillCategory::Communication),
-        SkillInfo::new("hope_todo_list", "TODO-k listázása", SkillCategory::Communication),
-        SkillInfo::new("hope_todo_complete", "TODO befejezése", SkillCategory::Communication),
-
+        SkillInfo::new(
+            "hope_email_send",
+            "Email küldése",
+            SkillCategory::Communication,
+        ),
+        SkillInfo::new(
+            "hope_email_check",
+            "Email ellenőrzése",
+            SkillCategory::Communication,
+        ),
+        SkillInfo::new(
+            "hope_calendar_add",
+            "Naptár esemény hozzáadása",
+            SkillCategory::Communication,
+        ),
+        SkillInfo::new(
+            "hope_calendar_list",
+            "Naptár események listázása",
+            SkillCategory::Communication,
+        ),
+        SkillInfo::new(
+            "hope_schedule",
+            "Emlékeztető beállítása",
+            SkillCategory::Communication,
+        ),
+        SkillInfo::new(
+            "hope_list_reminders",
+            "Emlékeztetők listázása",
+            SkillCategory::Communication,
+        ),
+        SkillInfo::new(
+            "hope_todo_add",
+            "TODO hozzáadása",
+            SkillCategory::Communication,
+        ),
+        SkillInfo::new(
+            "hope_todo_list",
+            "TODO-k listázása",
+            SkillCategory::Communication,
+        ),
+        SkillInfo::new(
+            "hope_todo_complete",
+            "TODO befejezése",
+            SkillCategory::Communication,
+        ),
         // === OTHER ===
         SkillInfo::new("hope_weather", "Időjárás lekérdezése", SkillCategory::Other),
         SkillInfo::new("hope_news", "Hírek lekérdezése", SkillCategory::Other),
-        SkillInfo::new("hope_exchange_rate", "Árfolyam lekérdezése", SkillCategory::Other),
-        SkillInfo::new("hope_genome_status", "AI Genom állapot", SkillCategory::Other),
-        SkillInfo::new("hope_genome_verify", "Akció etikai ellenőrzése", SkillCategory::Other),
-        SkillInfo::new("hope_alan_status", "ALAN önkódoló állapot", SkillCategory::Other),
+        SkillInfo::new(
+            "hope_exchange_rate",
+            "Árfolyam lekérdezése",
+            SkillCategory::Other,
+        ),
+        SkillInfo::new(
+            "hope_genome_status",
+            "AI Genom állapot",
+            SkillCategory::Other,
+        ),
+        SkillInfo::new(
+            "hope_genome_verify",
+            "Akció etikai ellenőrzése",
+            SkillCategory::Other,
+        ),
+        SkillInfo::new(
+            "hope_alan_status",
+            "ALAN önkódoló állapot",
+            SkillCategory::Other,
+        ),
         SkillInfo::new("hope_alan_analyze", "ALAN önelemzés", SkillCategory::Other),
-        SkillInfo::new("hope_plugin_list", "Plugin-ok listázása", SkillCategory::Other),
+        SkillInfo::new(
+            "hope_plugin_list",
+            "Plugin-ok listázása",
+            SkillCategory::Other,
+        ),
         SkillInfo::new("hope_plugin_load", "Plugin betöltése", SkillCategory::Other),
     ]
 }
@@ -877,6 +1027,10 @@ mod tests {
     fn test_default_skills_count() {
         let skills = default_skills();
         // Ellenőrizzük, hogy van elég skill
-        assert!(skills.len() >= 50, "Expected at least 50 skills, got {}", skills.len());
+        assert!(
+            skills.len() >= 50,
+            "Expected at least 50 skills, got {}",
+            skills.len()
+        );
     }
 }

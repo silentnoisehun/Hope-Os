@@ -103,8 +103,12 @@ impl VoiceInfo {
             description: "Magyar női hang - Hope alapértelmezett hangja".to_string(),
             available: true,
             emotions: vec![
-                "joy".to_string(), "sadness".to_string(), "anger".to_string(),
-                "fear".to_string(), "neutral".to_string(), "love".to_string(),
+                "joy".to_string(),
+                "sadness".to_string(),
+                "anger".to_string(),
+                "fear".to_string(),
+                "neutral".to_string(),
+                "love".to_string(),
             ],
             engine: VoiceEngine::Piper,
             style: "conversational".to_string(),
@@ -121,7 +125,11 @@ impl VoiceInfo {
             gender: Gender::Female,
             description: "Magyar női hang - lágyabb tónus".to_string(),
             available: true,
-            emotions: vec!["joy".to_string(), "neutral".to_string(), "sadness".to_string()],
+            emotions: vec![
+                "joy".to_string(),
+                "neutral".to_string(),
+                "sadness".to_string(),
+            ],
             engine: VoiceEngine::Piper,
             style: "conversational".to_string(),
             model_name: "hu_HU-anna-medium".to_string(),
@@ -137,7 +145,11 @@ impl VoiceInfo {
             gender: Gender::Female,
             description: "Magyar női hang - Microsoft Edge TTS".to_string(),
             available: true,
-            emotions: vec!["joy".to_string(), "neutral".to_string(), "sadness".to_string()],
+            emotions: vec![
+                "joy".to_string(),
+                "neutral".to_string(),
+                "sadness".to_string(),
+            ],
             engine: VoiceEngine::Edge,
             style: "conversational".to_string(),
             model_name: "hu-HU-NoemiNeural".to_string(),
@@ -153,7 +165,11 @@ impl VoiceInfo {
             gender: Gender::Male,
             description: "Magyar férfi hang - Microsoft Edge TTS".to_string(),
             available: true,
-            emotions: vec!["joy".to_string(), "neutral".to_string(), "sadness".to_string()],
+            emotions: vec![
+                "joy".to_string(),
+                "neutral".to_string(),
+                "sadness".to_string(),
+            ],
             engine: VoiceEngine::Edge,
             style: "conversational".to_string(),
             model_name: "hu-HU-TamasNeural".to_string(),
@@ -169,7 +185,11 @@ impl VoiceInfo {
             gender: Gender::Male,
             description: "American male voice - high quality".to_string(),
             available: true,
-            emotions: vec!["joy".to_string(), "neutral".to_string(), "sadness".to_string()],
+            emotions: vec![
+                "joy".to_string(),
+                "neutral".to_string(),
+                "sadness".to_string(),
+            ],
             engine: VoiceEngine::Piper,
             style: "conversational".to_string(),
             model_name: "en_US-ryan-high".to_string(),
@@ -185,7 +205,11 @@ impl VoiceInfo {
             gender: Gender::Female,
             description: "British female voice".to_string(),
             available: true,
-            emotions: vec!["joy".to_string(), "neutral".to_string(), "sadness".to_string()],
+            emotions: vec![
+                "joy".to_string(),
+                "neutral".to_string(),
+                "sadness".to_string(),
+            ],
             engine: VoiceEngine::Piper,
             style: "conversational".to_string(),
             model_name: "en_GB-amy-medium".to_string(),
@@ -202,8 +226,11 @@ impl VoiceInfo {
             description: "American female voice - Microsoft Edge TTS".to_string(),
             available: true,
             emotions: vec![
-                "joy".to_string(), "sadness".to_string(), "anger".to_string(),
-                "fear".to_string(), "neutral".to_string(),
+                "joy".to_string(),
+                "sadness".to_string(),
+                "anger".to_string(),
+                "fear".to_string(),
+                "neutral".to_string(),
             ],
             engine: VoiceEngine::Edge,
             style: "conversational".to_string(),
@@ -220,7 +247,11 @@ impl VoiceInfo {
             gender: Gender::Male,
             description: "American male voice - Microsoft Edge TTS".to_string(),
             available: true,
-            emotions: vec!["joy".to_string(), "neutral".to_string(), "sadness".to_string()],
+            emotions: vec![
+                "joy".to_string(),
+                "neutral".to_string(),
+                "sadness".to_string(),
+            ],
             engine: VoiceEngine::Edge,
             style: "conversational".to_string(),
             model_name: "en-US-GuyNeural".to_string(),
@@ -237,9 +268,14 @@ impl VoiceInfo {
             description: "American female voice - expressive, emotional".to_string(),
             available: true,
             emotions: vec![
-                "joy".to_string(), "sadness".to_string(), "anger".to_string(),
-                "fear".to_string(), "neutral".to_string(), "cheerful".to_string(),
-                "empathetic".to_string(), "friendly".to_string(),
+                "joy".to_string(),
+                "sadness".to_string(),
+                "anger".to_string(),
+                "fear".to_string(),
+                "neutral".to_string(),
+                "cheerful".to_string(),
+                "empathetic".to_string(),
+                "friendly".to_string(),
             ],
             engine: VoiceEngine::Edge,
             style: "conversational".to_string(),
@@ -601,12 +637,18 @@ impl HopeVoice {
 
     /// TTS URL összeállítás
     fn tts_url(&self, endpoint: &str) -> String {
-        format!("{}:{}{}", self.config.tts_url, self.config.tts_port, endpoint)
+        format!(
+            "{}:{}{}",
+            self.config.tts_url, self.config.tts_port, endpoint
+        )
     }
 
     /// STT URL összeállítás
     fn stt_url(&self, endpoint: &str) -> String {
-        format!("{}:{}{}", self.config.stt_url, self.config.stt_port, endpoint)
+        format!(
+            "{}:{}{}",
+            self.config.stt_url, self.config.stt_port, endpoint
+        )
     }
 
     // ==================== TTS ====================
@@ -619,7 +661,9 @@ impl HopeVoice {
         let prosody = if let Some(ref emotions) = request.emotions_21d {
             ProsodySettings::from_emotions_21d(emotions)
         } else {
-            request.prosody.unwrap_or_else(|| ProsodySettings::from_emotion(&request.emotion))
+            request
+                .prosody
+                .unwrap_or_else(|| ProsodySettings::from_emotion(&request.emotion))
         };
 
         // API endpoint választás motor alapján
@@ -642,7 +686,8 @@ impl HopeVoice {
             "noise_w": prosody.noise_w,
         });
 
-        let response = self.http_client
+        let response = self
+            .http_client
             .post(&url)
             .json(&payload)
             .send()
@@ -653,7 +698,9 @@ impl HopeVoice {
             return Err(format!("TTS szerver hiba: {}", response.status()).into());
         }
 
-        let audio = response.bytes().await
+        let audio = response
+            .bytes()
+            .await
             .map_err(|e| format!("Audio letöltés hiba: {}", e))?
             .to_vec();
 
@@ -683,19 +730,27 @@ impl HopeVoice {
     // ==================== STT ====================
 
     /// Transzkripció (audio fájlból)
-    pub async fn transcribe(&self, audio_data: Vec<u8>, request: ListenRequest) -> HopeResult<TranscriptionResponse> {
+    pub async fn transcribe(
+        &self,
+        audio_data: Vec<u8>,
+        request: ListenRequest,
+    ) -> HopeResult<TranscriptionResponse> {
         let url = self.stt_url("/v1/audio/transcriptions");
 
         // Multipart form
         let form = reqwest::multipart::Form::new()
-            .part("file", reqwest::multipart::Part::bytes(audio_data)
-                .file_name("audio.wav")
-                .mime_str("audio/wav")
-                .unwrap())
+            .part(
+                "file",
+                reqwest::multipart::Part::bytes(audio_data)
+                    .file_name("audio.wav")
+                    .mime_str("audio/wav")
+                    .unwrap(),
+            )
             .text("language", request.language.clone())
             .text("word_timestamps", request.word_timestamps.to_string());
 
-        let response = self.http_client
+        let response = self
+            .http_client
             .post(&url)
             .multipart(form)
             .send()
@@ -706,7 +761,9 @@ impl HopeVoice {
             return Err(format!("STT szerver hiba: {}", response.status()).into());
         }
 
-        let result: serde_json::Value = response.json().await
+        let result: serde_json::Value = response
+            .json()
+            .await
             .map_err(|e| format!("JSON parse hiba: {}", e))?;
 
         Ok(TranscriptionResponse {
@@ -722,7 +779,9 @@ impl HopeVoice {
 
     /// Hang beállítása
     pub async fn set_voice(&self, voice_id: &str) -> HopeResult<()> {
-        let voice = self.voices.iter()
+        let voice = self
+            .voices
+            .iter()
             .find(|v| v.id == voice_id)
             .ok_or_else(|| format!("Ismeretlen hang: {}", voice_id))?
             .clone();
@@ -751,28 +810,32 @@ impl HopeVoice {
 
     /// Magyar hangok
     pub fn hungarian_voices(&self) -> Vec<&VoiceInfo> {
-        self.voices.iter()
+        self.voices
+            .iter()
             .filter(|v| v.language.starts_with("hu"))
             .collect()
     }
 
     /// Angol hangok
     pub fn english_voices(&self) -> Vec<&VoiceInfo> {
-        self.voices.iter()
+        self.voices
+            .iter()
             .filter(|v| v.language.starts_with("en"))
             .collect()
     }
 
     /// Női hangok
     pub fn female_voices(&self) -> Vec<&VoiceInfo> {
-        self.voices.iter()
+        self.voices
+            .iter()
             .filter(|v| v.gender == Gender::Female)
             .collect()
     }
 
     /// Férfi hangok
     pub fn male_voices(&self) -> Vec<&VoiceInfo> {
-        self.voices.iter()
+        self.voices
+            .iter()
             .filter(|v| v.gender == Gender::Male)
             .collect()
     }
@@ -872,11 +935,17 @@ mod tests {
         assert_eq!(voices.len(), 10);
 
         // Magyar hangok
-        let hu_voices: Vec<_> = voices.iter().filter(|v| v.language.starts_with("hu")).collect();
+        let hu_voices: Vec<_> = voices
+            .iter()
+            .filter(|v| v.language.starts_with("hu"))
+            .collect();
         assert_eq!(hu_voices.len(), 4);
 
         // Angol hangok
-        let en_voices: Vec<_> = voices.iter().filter(|v| v.language.starts_with("en")).collect();
+        let en_voices: Vec<_> = voices
+            .iter()
+            .filter(|v| v.language.starts_with("en"))
+            .collect();
         assert_eq!(en_voices.len(), 6);
     }
 

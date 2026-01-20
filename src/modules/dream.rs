@@ -118,7 +118,10 @@ impl Dream {
             .as_secs_f64();
 
         Self {
-            dream_id: format!("DRM_{}", uuid::Uuid::new_v4().to_string()[..8].to_uppercase()),
+            dream_id: format!(
+                "DRM_{}",
+                uuid::Uuid::new_v4().to_string()[..8].to_uppercase()
+            ),
             timestamp,
             dream_type,
             content: content.to_string(),
@@ -144,7 +147,8 @@ impl Dream {
 
     /// Érzelem hozzáadása
     pub fn with_emotion(mut self, emotion: &str, intensity: f64) -> Self {
-        self.emotions.insert(emotion.to_string(), intensity.clamp(0.0, 1.0));
+        self.emotions
+            .insert(emotion.to_string(), intensity.clamp(0.0, 1.0));
         self
     }
 
@@ -188,7 +192,10 @@ impl DreamSession {
             .as_secs_f64();
 
         Self {
-            session_id: format!("SES_{}", uuid::Uuid::new_v4().to_string()[..8].to_uppercase()),
+            session_id: format!(
+                "SES_{}",
+                uuid::Uuid::new_v4().to_string()[..8].to_uppercase()
+            ),
             start_time,
             end_time: None,
             duration_minutes: 0.0,
@@ -312,8 +319,14 @@ impl DreamEngine {
         // Álmok átmásolása
         let dreams = self.dreams_tonight.read().await.clone();
         session.dreams = dreams.clone();
-        session.insights_count = dreams.iter().filter(|d| d.dream_type == DreamType::Insight).count();
-        session.associations_found = dreams.iter().filter(|d| d.dream_type == DreamType::Association).count();
+        session.insights_count = dreams
+            .iter()
+            .filter(|d| d.dream_type == DreamType::Insight)
+            .count();
+        session.associations_found = dreams
+            .iter()
+            .filter(|d| d.dream_type == DreamType::Association)
+            .count();
 
         // Statisztikák
         let mut stats = self.stats.write().await;
@@ -376,7 +389,9 @@ impl DreamEngine {
         // Random érzelmek
         let emotions = ["joy", "curiosity", "wonder", "peace", "nostalgia"];
         let emotion = emotions[rng.gen_range(0..emotions.len())];
-        dream.emotions.insert(emotion.to_string(), rng.gen_range(0.3..0.8));
+        dream
+            .emotions
+            .insert(emotion.to_string(), rng.gen_range(0.3..0.8));
 
         // Mentés
         self.dreams_tonight.write().await.push(dream.clone());
@@ -531,7 +546,11 @@ impl DreamEngine {
              💡 Belátások: {}\n\
              🔗 Asszociációk: {}\n\
              ⏱️ Alvásidő: {:.1} perc",
-            if is_dreaming { "💤 Alszom" } else { "👁️ Ébren" },
+            if is_dreaming {
+                "💤 Alszom"
+            } else {
+                "👁️ Ébren"
+            },
             phase,
             dreams_tonight,
             stats.total_dreams,

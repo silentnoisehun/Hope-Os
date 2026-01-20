@@ -81,9 +81,7 @@ impl HebbianNeuron {
         let mut rng = rand::thread_rng();
 
         // Random inicializálás normál eloszlással
-        let weights: Vec<f64> = (0..input_size)
-            .map(|_| rng.gen_range(-0.1..0.1))
-            .collect();
+        let weights: Vec<f64> = (0..input_size).map(|_| rng.gen_range(-0.1..0.1)).collect();
 
         Self {
             neuron_id: neuron_id.to_string(),
@@ -106,12 +104,9 @@ impl HebbianNeuron {
     /// Sigmoid aktiváció és küszöb ellenőrzés.
     pub fn activate(&mut self, inputs: &[f64]) -> HopeResult<f64> {
         if inputs.len() != self.input_size {
-            return Err(format!(
-                "Expected {} inputs, got {}",
-                self.input_size,
-                inputs.len()
-            )
-            .into());
+            return Err(
+                format!("Expected {} inputs, got {}", self.input_size, inputs.len()).into(),
+            );
         }
 
         // Súlyozott összeg
@@ -168,12 +163,7 @@ impl HebbianNeuron {
 
     /// Neuron statisztikák
     pub fn get_stats(&self) -> NeuronStats {
-        let recent: Vec<&f64> = self
-            .activation_history
-            .iter()
-            .rev()
-            .take(50)
-            .collect();
+        let recent: Vec<&f64> = self.activation_history.iter().rev().take(50).collect();
 
         let firing_rate = if recent.is_empty() {
             0.0
@@ -277,7 +267,8 @@ impl HebbianNetwork {
 
             for j in 0..size {
                 let neuron_id = format!("L{}_N{}", i + 1, j);
-                let mut neuron = HebbianNeuron::with_threshold(&neuron_id, prev_size, config.threshold);
+                let mut neuron =
+                    HebbianNeuron::with_threshold(&neuron_id, prev_size, config.threshold);
                 neuron.learning_rate = config.learning_rate;
                 layer.push(neuron);
             }
@@ -587,8 +578,14 @@ impl HebbianEngine {
             "principle".to_string(),
             serde_json::json!("Neurons that fire together wire together"),
         );
-        map.insert("total_networks".to_string(), serde_json::json!(stats.total_networks));
-        map.insert("total_neurons".to_string(), serde_json::json!(stats.total_neurons));
+        map.insert(
+            "total_networks".to_string(),
+            serde_json::json!(stats.total_networks),
+        );
+        map.insert(
+            "total_neurons".to_string(),
+            serde_json::json!(stats.total_neurons),
+        );
         map.insert(
             "total_training_steps".to_string(),
             serde_json::json!(stats.total_training_steps),
@@ -726,9 +723,7 @@ mod tests {
         };
 
         let mut network = HebbianNetwork::new("test", config);
-        let step = network
-            .learn(&[1.0, 0.5, 0.3], Some(&[1.0, 0.0]))
-            .unwrap();
+        let step = network.learn(&[1.0, 0.5, 0.3], Some(&[1.0, 0.0])).unwrap();
 
         assert!(step.error >= 0.0);
     }

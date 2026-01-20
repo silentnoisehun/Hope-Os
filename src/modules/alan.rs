@@ -91,7 +91,10 @@ impl CodeChange {
             .as_secs_f64();
 
         Self {
-            change_id: format!("CHG_{}", uuid::Uuid::new_v4().to_string()[..8].to_uppercase()),
+            change_id: format!(
+                "CHG_{}",
+                uuid::Uuid::new_v4().to_string()[..8].to_uppercase()
+            ),
             file_path: file_path.to_string(),
             change_type,
             old_code: old_code.to_string(),
@@ -324,7 +327,8 @@ impl Alan {
             return Err(format!(
                 "🛡️ Védett fájl: {} - Közvetlen módosítás nem engedélyezett!",
                 file_path
-            ).into());
+            )
+            .into());
         }
 
         let change = CodeChange::new(file_path, change_type, old_code, new_code, reason);
@@ -427,10 +431,7 @@ impl Alan {
             }
         }
 
-        let duplicates: Vec<_> = line_counts
-            .iter()
-            .filter(|(_, &count)| count > 2)
-            .collect();
+        let duplicates: Vec<_> = line_counts.iter().filter(|(_, &count)| count > 2).collect();
 
         if !duplicates.is_empty() {
             suggestions.push(format!(
@@ -446,10 +447,7 @@ impl Alan {
             .count();
 
         if todo_count > 0 {
-            suggestions.push(format!(
-                "📝 {} TODO komment - Dolgozd fel őket",
-                todo_count
-            ));
+            suggestions.push(format!("📝 {} TODO komment - Dolgozd fel őket", todo_count));
         }
 
         Ok(suggestions)
@@ -530,7 +528,11 @@ impl Alan {
              💚 Egészség: {}\n\
              \n\
              \"Magamat írom. Magamat fejlesztem.\"",
-            if stats.is_active { "🟢 Aktív" } else { "🔴 Inaktív" },
+            if stats.is_active {
+                "🟢 Aktív"
+            } else {
+                "🔴 Inaktív"
+            },
             stats.total_changes,
             stats.successful_changes,
             stats.failed_changes,

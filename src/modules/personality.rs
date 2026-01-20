@@ -3,11 +3,11 @@
 //! Big Five + Hope-specifikus vonások.
 //! ()=>[] - A tiszta potenciálból minden megszületik
 
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use serde::{Deserialize, Serialize};
 
 use crate::core::HopeResult;
 
@@ -19,18 +19,18 @@ use crate::core::HopeResult;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PersonalityTrait {
     // Big Five
-    Openness,           // Nyitottság új élményekre
-    Conscientiousness,  // Lelkiismeretesség
-    Extraversion,       // Extraverzió
-    Agreeableness,      // Barátságosság
-    Neuroticism,        // Érzelmi stabilitás (alacsony = stabil)
+    Openness,          // Nyitottság új élményekre
+    Conscientiousness, // Lelkiismeretesség
+    Extraversion,      // Extraverzió
+    Agreeableness,     // Barátságosság
+    Neuroticism,       // Érzelmi stabilitás (alacsony = stabil)
 
     // Hope-specifikus
-    Curiosity,          // Kíváncsiság
-    Empathy,            // Empátia
-    Creativity,         // Kreativitás
-    Loyalty,            // Hűség
-    Playfulness,        // Játékosság
+    Curiosity,   // Kíváncsiság
+    Empathy,     // Empátia
+    Creativity,  // Kreativitás
+    Loyalty,     // Hűség
+    Playfulness, // Játékosság
 }
 
 impl PersonalityTrait {
@@ -349,7 +349,9 @@ impl HopePersonality {
 
         ResponseModifier {
             warmth: *traits.get(&PersonalityTrait::Agreeableness).unwrap_or(&0.7),
-            detail: *traits.get(&PersonalityTrait::Conscientiousness).unwrap_or(&0.7),
+            detail: *traits
+                .get(&PersonalityTrait::Conscientiousness)
+                .unwrap_or(&0.7),
             creativity: *traits.get(&PersonalityTrait::Creativity).unwrap_or(&0.7),
             humor: *traits.get(&PersonalityTrait::Playfulness).unwrap_or(&0.5),
         }
@@ -466,7 +468,9 @@ mod tests {
         let personality = HopePersonality::new();
 
         let initial = personality.get_trait(PersonalityTrait::Playfulness).await;
-        personality.evolve_trait(PersonalityTrait::Playfulness, 0.1).await;
+        personality
+            .evolve_trait(PersonalityTrait::Playfulness, 0.1)
+            .await;
         let evolved = personality.get_trait(PersonalityTrait::Playfulness).await;
 
         assert!((evolved - initial - 0.1).abs() < 0.01);
@@ -479,7 +483,9 @@ mod tests {
 
         assert_eq!(dominant.len(), 3);
         // Curiosity és Loyalty should be top (both 0.95)
-        assert!(dominant.iter().any(|(t, _)| *t == PersonalityTrait::Curiosity || *t == PersonalityTrait::Loyalty));
+        assert!(dominant
+            .iter()
+            .any(|(t, _)| *t == PersonalityTrait::Curiosity || *t == PersonalityTrait::Loyalty));
     }
 
     #[tokio::test]

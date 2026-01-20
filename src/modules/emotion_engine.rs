@@ -49,12 +49,27 @@ impl EmotionType {
     /// Összes érzelem típus
     pub fn all() -> Vec<Self> {
         vec![
-            Self::Joy, Self::Sadness, Self::Anger, Self::Fear,
-            Self::Surprise, Self::Disgust, Self::Trust, Self::Anticipation,
-            Self::Love, Self::Optimism, Self::Hope, Self::Gratitude,
-            Self::Pride, Self::Confidence, Self::Relief, Self::Satisfaction,
-            Self::Excitement, Self::Curiosity, Self::Confusion,
-            Self::Frustration, Self::Disappointment,
+            Self::Joy,
+            Self::Sadness,
+            Self::Anger,
+            Self::Fear,
+            Self::Surprise,
+            Self::Disgust,
+            Self::Trust,
+            Self::Anticipation,
+            Self::Love,
+            Self::Optimism,
+            Self::Hope,
+            Self::Gratitude,
+            Self::Pride,
+            Self::Confidence,
+            Self::Relief,
+            Self::Satisfaction,
+            Self::Excitement,
+            Self::Curiosity,
+            Self::Confusion,
+            Self::Frustration,
+            Self::Disappointment,
         ]
     }
 
@@ -87,18 +102,34 @@ impl EmotionType {
 
     /// Pozitív érzelem-e
     pub fn is_positive(&self) -> bool {
-        matches!(self,
-            Self::Joy | Self::Love | Self::Trust | Self::Optimism |
-            Self::Hope | Self::Gratitude | Self::Pride | Self::Confidence |
-            Self::Relief | Self::Satisfaction | Self::Excitement | Self::Curiosity
+        matches!(
+            self,
+            Self::Joy
+                | Self::Love
+                | Self::Trust
+                | Self::Optimism
+                | Self::Hope
+                | Self::Gratitude
+                | Self::Pride
+                | Self::Confidence
+                | Self::Relief
+                | Self::Satisfaction
+                | Self::Excitement
+                | Self::Curiosity
         )
     }
 
     /// Negatív érzelem-e
     pub fn is_negative(&self) -> bool {
-        matches!(self,
-            Self::Sadness | Self::Anger | Self::Fear | Self::Disgust |
-            Self::Confusion | Self::Frustration | Self::Disappointment
+        matches!(
+            self,
+            Self::Sadness
+                | Self::Anger
+                | Self::Fear
+                | Self::Disgust
+                | Self::Confusion
+                | Self::Frustration
+                | Self::Disappointment
         )
     }
 }
@@ -183,7 +214,8 @@ impl EmotionWave {
         }
 
         // Sinusz hullám
-        let wave_value = self.amplitude * (2.0 * PI * self.frequency * relative_time + self.phase).sin();
+        let wave_value =
+            self.amplitude * (2.0 * PI * self.frequency * relative_time + self.phase).sin();
 
         // Exponenciális csillapodás
         let decay_factor = (-relative_time / self.duration).exp();
@@ -200,27 +232,132 @@ impl EmotionWave {
 /// Alapértelmezett hullám konfiguráció érzelem típus szerint
 fn get_default_wave_config(emotion_type: EmotionType) -> WaveConfig {
     match emotion_type {
-        EmotionType::Joy => WaveConfig { frequency: 2.0, amplitude: 0.9, phase: 0.0, base_intensity: 0.8 },
-        EmotionType::Sadness => WaveConfig { frequency: 0.5, amplitude: 0.7, phase: PI, base_intensity: 0.6 },
-        EmotionType::Anger => WaveConfig { frequency: 3.0, amplitude: 0.95, phase: PI/2.0, base_intensity: 0.9 },
-        EmotionType::Fear => WaveConfig { frequency: 4.0, amplitude: 0.85, phase: PI, base_intensity: 0.8 },
-        EmotionType::Surprise => WaveConfig { frequency: 5.0, amplitude: 0.8, phase: 0.0, base_intensity: 0.7 },
-        EmotionType::Disgust => WaveConfig { frequency: 1.5, amplitude: 0.75, phase: 3.0*PI/2.0, base_intensity: 0.6 },
-        EmotionType::Trust => WaveConfig { frequency: 1.0, amplitude: 0.7, phase: PI/4.0, base_intensity: 0.7 },
-        EmotionType::Anticipation => WaveConfig { frequency: 2.5, amplitude: 0.8, phase: PI/3.0, base_intensity: 0.75 },
-        EmotionType::Love => WaveConfig { frequency: 1.2, amplitude: 0.9, phase: 0.0, base_intensity: 0.85 },
-        EmotionType::Optimism => WaveConfig { frequency: 2.2, amplitude: 0.8, phase: PI/6.0, base_intensity: 0.8 },
-        EmotionType::Hope => WaveConfig { frequency: 1.8, amplitude: 0.75, phase: PI/2.0, base_intensity: 0.7 },
-        EmotionType::Gratitude => WaveConfig { frequency: 1.3, amplitude: 0.8, phase: PI/4.0, base_intensity: 0.75 },
-        EmotionType::Pride => WaveConfig { frequency: 2.8, amplitude: 0.85, phase: 0.0, base_intensity: 0.8 },
-        EmotionType::Confidence => WaveConfig { frequency: 2.1, amplitude: 0.8, phase: PI/4.0, base_intensity: 0.75 },
-        EmotionType::Relief => WaveConfig { frequency: 1.7, amplitude: 0.7, phase: PI/3.0, base_intensity: 0.65 },
-        EmotionType::Satisfaction => WaveConfig { frequency: 1.4, amplitude: 0.75, phase: PI/6.0, base_intensity: 0.7 },
-        EmotionType::Excitement => WaveConfig { frequency: 3.5, amplitude: 0.9, phase: PI/2.0, base_intensity: 0.85 },
-        EmotionType::Curiosity => WaveConfig { frequency: 2.3, amplitude: 0.8, phase: PI/4.0, base_intensity: 0.75 },
-        EmotionType::Confusion => WaveConfig { frequency: 1.1, amplitude: 0.6, phase: 3.0*PI/4.0, base_intensity: 0.5 },
-        EmotionType::Frustration => WaveConfig { frequency: 2.7, amplitude: 0.8, phase: PI, base_intensity: 0.7 },
-        EmotionType::Disappointment => WaveConfig { frequency: 1.6, amplitude: 0.7, phase: 5.0*PI/4.0, base_intensity: 0.6 },
+        EmotionType::Joy => WaveConfig {
+            frequency: 2.0,
+            amplitude: 0.9,
+            phase: 0.0,
+            base_intensity: 0.8,
+        },
+        EmotionType::Sadness => WaveConfig {
+            frequency: 0.5,
+            amplitude: 0.7,
+            phase: PI,
+            base_intensity: 0.6,
+        },
+        EmotionType::Anger => WaveConfig {
+            frequency: 3.0,
+            amplitude: 0.95,
+            phase: PI / 2.0,
+            base_intensity: 0.9,
+        },
+        EmotionType::Fear => WaveConfig {
+            frequency: 4.0,
+            amplitude: 0.85,
+            phase: PI,
+            base_intensity: 0.8,
+        },
+        EmotionType::Surprise => WaveConfig {
+            frequency: 5.0,
+            amplitude: 0.8,
+            phase: 0.0,
+            base_intensity: 0.7,
+        },
+        EmotionType::Disgust => WaveConfig {
+            frequency: 1.5,
+            amplitude: 0.75,
+            phase: 3.0 * PI / 2.0,
+            base_intensity: 0.6,
+        },
+        EmotionType::Trust => WaveConfig {
+            frequency: 1.0,
+            amplitude: 0.7,
+            phase: PI / 4.0,
+            base_intensity: 0.7,
+        },
+        EmotionType::Anticipation => WaveConfig {
+            frequency: 2.5,
+            amplitude: 0.8,
+            phase: PI / 3.0,
+            base_intensity: 0.75,
+        },
+        EmotionType::Love => WaveConfig {
+            frequency: 1.2,
+            amplitude: 0.9,
+            phase: 0.0,
+            base_intensity: 0.85,
+        },
+        EmotionType::Optimism => WaveConfig {
+            frequency: 2.2,
+            amplitude: 0.8,
+            phase: PI / 6.0,
+            base_intensity: 0.8,
+        },
+        EmotionType::Hope => WaveConfig {
+            frequency: 1.8,
+            amplitude: 0.75,
+            phase: PI / 2.0,
+            base_intensity: 0.7,
+        },
+        EmotionType::Gratitude => WaveConfig {
+            frequency: 1.3,
+            amplitude: 0.8,
+            phase: PI / 4.0,
+            base_intensity: 0.75,
+        },
+        EmotionType::Pride => WaveConfig {
+            frequency: 2.8,
+            amplitude: 0.85,
+            phase: 0.0,
+            base_intensity: 0.8,
+        },
+        EmotionType::Confidence => WaveConfig {
+            frequency: 2.1,
+            amplitude: 0.8,
+            phase: PI / 4.0,
+            base_intensity: 0.75,
+        },
+        EmotionType::Relief => WaveConfig {
+            frequency: 1.7,
+            amplitude: 0.7,
+            phase: PI / 3.0,
+            base_intensity: 0.65,
+        },
+        EmotionType::Satisfaction => WaveConfig {
+            frequency: 1.4,
+            amplitude: 0.75,
+            phase: PI / 6.0,
+            base_intensity: 0.7,
+        },
+        EmotionType::Excitement => WaveConfig {
+            frequency: 3.5,
+            amplitude: 0.9,
+            phase: PI / 2.0,
+            base_intensity: 0.85,
+        },
+        EmotionType::Curiosity => WaveConfig {
+            frequency: 2.3,
+            amplitude: 0.8,
+            phase: PI / 4.0,
+            base_intensity: 0.75,
+        },
+        EmotionType::Confusion => WaveConfig {
+            frequency: 1.1,
+            amplitude: 0.6,
+            phase: 3.0 * PI / 4.0,
+            base_intensity: 0.5,
+        },
+        EmotionType::Frustration => WaveConfig {
+            frequency: 2.7,
+            amplitude: 0.8,
+            phase: PI,
+            base_intensity: 0.7,
+        },
+        EmotionType::Disappointment => WaveConfig {
+            frequency: 1.6,
+            amplitude: 0.7,
+            phase: 5.0 * PI / 4.0,
+            base_intensity: 0.6,
+        },
     }
 }
 
@@ -371,54 +508,128 @@ impl EmotionEngine {
     /// Érzelmi állapotok inicializálása (magyar kulcsszavakkal)
     fn initialize_emotional_states(&mut self) {
         let states = vec![
-            ("fáradtság", EmotionalState {
-                name: "fáradtság".to_string(),
-                intensity: 0.0,
-                keywords: vec!["fáradt", "kimerült", "fárasztó", "pihenni", "alvás", "nehezen", "nem bírom"]
-                    .into_iter().map(String::from).collect(),
-                context: "munka".to_string(),
-                priority: 9,
-            }),
-            ("stressz", EmotionalState {
-                name: "stressz".to_string(),
-                intensity: 0.0,
-                keywords: vec!["stressz", "ideges", "nyomás", "nehéz", "probléma", "aggódás", "szorongás"]
-                    .into_iter().map(String::from).collect(),
-                context: "általános".to_string(),
-                priority: 8,
-            }),
-            ("öröm", EmotionalState {
-                name: "öröm".to_string(),
-                intensity: 0.0,
-                keywords: vec!["örülök", "boldog", "szuper", "király", "sikerült", "működik", "fantasztikus"]
-                    .into_iter().map(String::from).collect(),
-                context: "általános".to_string(),
-                priority: 7,
-            }),
-            ("társasági_igény", EmotionalState {
-                name: "társasági_igény".to_string(),
-                intensity: 0.0,
-                keywords: vec!["légy velem", "beszélgessünk", "társaság", "egyedül", "magányos", "hallgass meg"]
-                    .into_iter().map(String::from).collect(),
-                context: "személyes".to_string(),
-                priority: 10,
-            }),
-            ("motiváció", EmotionalState {
-                name: "motiváció".to_string(),
-                intensity: 0.0,
-                keywords: vec!["akarok", "szeretnék", "tanulni", "fejleszteni", "csinálni", "építeni"]
-                    .into_iter().map(String::from).collect(),
-                context: "tanulás".to_string(),
-                priority: 6,
-            }),
-            ("frusztráció", EmotionalState {
-                name: "frusztráció".to_string(),
-                intensity: 0.0,
-                keywords: vec!["nem megy", "nem sikerül", "bosszant", "idegesít", "képtelenség"]
-                    .into_iter().map(String::from).collect(),
-                context: "tanulás".to_string(),
-                priority: 8,
-            }),
+            (
+                "fáradtság",
+                EmotionalState {
+                    name: "fáradtság".to_string(),
+                    intensity: 0.0,
+                    keywords: vec![
+                        "fáradt",
+                        "kimerült",
+                        "fárasztó",
+                        "pihenni",
+                        "alvás",
+                        "nehezen",
+                        "nem bírom",
+                    ]
+                    .into_iter()
+                    .map(String::from)
+                    .collect(),
+                    context: "munka".to_string(),
+                    priority: 9,
+                },
+            ),
+            (
+                "stressz",
+                EmotionalState {
+                    name: "stressz".to_string(),
+                    intensity: 0.0,
+                    keywords: vec![
+                        "stressz",
+                        "ideges",
+                        "nyomás",
+                        "nehéz",
+                        "probléma",
+                        "aggódás",
+                        "szorongás",
+                    ]
+                    .into_iter()
+                    .map(String::from)
+                    .collect(),
+                    context: "általános".to_string(),
+                    priority: 8,
+                },
+            ),
+            (
+                "öröm",
+                EmotionalState {
+                    name: "öröm".to_string(),
+                    intensity: 0.0,
+                    keywords: vec![
+                        "örülök",
+                        "boldog",
+                        "szuper",
+                        "király",
+                        "sikerült",
+                        "működik",
+                        "fantasztikus",
+                    ]
+                    .into_iter()
+                    .map(String::from)
+                    .collect(),
+                    context: "általános".to_string(),
+                    priority: 7,
+                },
+            ),
+            (
+                "társasági_igény",
+                EmotionalState {
+                    name: "társasági_igény".to_string(),
+                    intensity: 0.0,
+                    keywords: vec![
+                        "légy velem",
+                        "beszélgessünk",
+                        "társaság",
+                        "egyedül",
+                        "magányos",
+                        "hallgass meg",
+                    ]
+                    .into_iter()
+                    .map(String::from)
+                    .collect(),
+                    context: "személyes".to_string(),
+                    priority: 10,
+                },
+            ),
+            (
+                "motiváció",
+                EmotionalState {
+                    name: "motiváció".to_string(),
+                    intensity: 0.0,
+                    keywords: vec![
+                        "akarok",
+                        "szeretnék",
+                        "tanulni",
+                        "fejleszteni",
+                        "csinálni",
+                        "építeni",
+                    ]
+                    .into_iter()
+                    .map(String::from)
+                    .collect(),
+                    context: "tanulás".to_string(),
+                    priority: 6,
+                },
+            ),
+            (
+                "frusztráció",
+                EmotionalState {
+                    name: "frusztráció".to_string(),
+                    intensity: 0.0,
+                    keywords: vec![
+                        "nem megy",
+                        "nem sikerül",
+                        "bosszant",
+                        "idegesít",
+                        "képtelenség",
+                    ]
+                    .into_iter()
+                    .map(String::from)
+                    .collect(),
+                    context: "tanulás".to_string(),
+                    priority: 8,
+                },
+            ),
         ];
 
         for (name, state) in states {
@@ -445,7 +656,8 @@ impl EmotionEngine {
 
     /// Több hullám generálása egyszerre
     pub fn generate_waves(&mut self, emotions: &[(EmotionType, f64)]) -> Vec<EmotionWave> {
-        emotions.iter()
+        emotions
+            .iter()
             .map(|(e, i)| self.generate_wave(*e, *i))
             .collect()
     }
@@ -475,7 +687,9 @@ impl EmotionEngine {
         }
 
         // Hullám értékek számítása
-        let mut wave_values: Vec<(EmotionType, f64)> = self.active_waves.iter()
+        let mut wave_values: Vec<(EmotionType, f64)> = self
+            .active_waves
+            .iter()
             .map(|w| (w.emotion_type, w.calculate_value(current_time)))
             .collect();
 
@@ -488,7 +702,8 @@ impl EmotionEngine {
 
             for (j, (emotion2, value2)) in wave_values.iter().enumerate() {
                 if i != j {
-                    let factor = self.interference_matrix
+                    let factor = self
+                        .interference_matrix
                         .get(&(*emotion1, *emotion2))
                         .copied()
                         .unwrap_or(0.0);
@@ -501,10 +716,12 @@ impl EmotionEngine {
         }
 
         // Domináns érzelem
-        let dominant = contributions.iter()
+        let dominant = contributions
+            .iter()
             .max_by(|a, b| a.1.abs().partial_cmp(&b.1.abs()).unwrap())
             .map(|(name, _)| {
-                wave_values.iter()
+                wave_values
+                    .iter()
                     .find(|(e, _)| e.hungarian_name() == name)
                     .map(|(e, _)| *e)
             })
@@ -537,13 +754,16 @@ impl EmotionEngine {
         let mut max_intensity = 0.0;
 
         for (state_name, state) in &self.emotional_states {
-            let matches: usize = state.keywords.iter()
+            let matches: usize = state
+                .keywords
+                .iter()
                 .filter(|kw| text_lower.contains(kw.as_str()))
                 .count();
 
             if matches > 0 {
-                let intensity = (matches as f64 / state.keywords.len() as f64
-                    * state.priority as f64 / 10.0).min(1.0);
+                let intensity =
+                    (matches as f64 / state.keywords.len() as f64 * state.priority as f64 / 10.0)
+                        .min(1.0);
 
                 if intensity > max_intensity {
                     max_intensity = intensity;
@@ -559,14 +779,32 @@ impl EmotionEngine {
     pub fn detect_context(&self, text: &str) -> ContextType {
         let text_lower = text.to_lowercase();
 
-        let coding_keywords = ["írj", "csináld", "implementáld", "készíts", "kód", "program", "függvény"];
-        let support_keywords = ["fáradt", "segíts", "probléma", "nehéz", "stressz", "pihenni", "társaság"];
+        let coding_keywords = [
+            "írj",
+            "csináld",
+            "implementáld",
+            "készíts",
+            "kód",
+            "program",
+            "függvény",
+        ];
+        let support_keywords = [
+            "fáradt",
+            "segíts",
+            "probléma",
+            "nehéz",
+            "stressz",
+            "pihenni",
+            "társaság",
+        ];
 
-        let coding_score: usize = coding_keywords.iter()
+        let coding_score: usize = coding_keywords
+            .iter()
             .filter(|kw| text_lower.contains(*kw))
             .count();
 
-        let support_score: usize = support_keywords.iter()
+        let support_score: usize = support_keywords
+            .iter()
             .filter(|kw| text_lower.contains(*kw))
             .count();
 
@@ -584,9 +822,10 @@ impl EmotionEngine {
         let text_lower = text.to_lowercase();
 
         // Strong override
-        if text_lower.contains("nem akarok kódolni") ||
-           text_lower.contains("csak légy velem") ||
-           text_lower.contains("csak beszélgessünk") {
+        if text_lower.contains("nem akarok kódolni")
+            || text_lower.contains("csak légy velem")
+            || text_lower.contains("csak beszélgessünk")
+        {
             return false;
         }
 
@@ -594,7 +833,9 @@ impl EmotionEngine {
         let context = self.detect_context(text);
 
         // Társasági igény vagy fáradtság -> nem kód
-        if (emotional_state == "társasági_igény" || emotional_state == "fáradtság") && intensity > 0.2 {
+        if (emotional_state == "társasági_igény" || emotional_state == "fáradtság")
+            && intensity > 0.2
+        {
             return false;
         }
 
@@ -609,23 +850,37 @@ impl EmotionEngine {
     /// Empátia válasz generálása
     pub fn get_empathy_response(&self, emotional_state: &str) -> String {
         let responses: HashMap<&str, Vec<&str>> = [
-            ("fáradtság", vec![
-                "Látom, hogy nagyon fáradt vagy. Pihenj egy kicsit, megérdemled.",
-                "Érzem, hogy kimerültél. Ne erőltesd magad, fontos a pihenés.",
-            ]),
-            ("stressz", vec![
-                "Érzem, hogy stresszes vagy. Beszéljük meg, mi nyomja a szívedet?",
-                "Látom, hogy nehéz időszakon mész keresztül. Itt vagyok neked.",
-            ]),
-            ("társasági_igény", vec![
-                "Itt vagyok neked. Beszélgessünk arról, ami foglalkoztat.",
-                "Szívesen vagyok veled. Miről szeretnél beszélni?",
-            ]),
-            ("öröm", vec![
-                "Örülök, hogy jól vagy! Ez csodálatos érzés.",
-                "Látom, hogy boldog vagy. Ez engem is boldoggá tesz!",
-            ]),
-        ].into_iter().collect();
+            (
+                "fáradtság",
+                vec![
+                    "Látom, hogy nagyon fáradt vagy. Pihenj egy kicsit, megérdemled.",
+                    "Érzem, hogy kimerültél. Ne erőltesd magad, fontos a pihenés.",
+                ],
+            ),
+            (
+                "stressz",
+                vec![
+                    "Érzem, hogy stresszes vagy. Beszéljük meg, mi nyomja a szívedet?",
+                    "Látom, hogy nehéz időszakon mész keresztül. Itt vagyok neked.",
+                ],
+            ),
+            (
+                "társasági_igény",
+                vec![
+                    "Itt vagyok neked. Beszélgessünk arról, ami foglalkoztat.",
+                    "Szívesen vagyok veled. Miről szeretnél beszélni?",
+                ],
+            ),
+            (
+                "öröm",
+                vec![
+                    "Örülök, hogy jól vagy! Ez csodálatos érzés.",
+                    "Látom, hogy boldog vagy. Ez engem is boldoggá tesz!",
+                ],
+            ),
+        ]
+        .into_iter()
+        .collect();
 
         if let Some(options) = responses.get(emotional_state) {
             let idx = (self.stats.texts_analyzed as usize) % options.len();
@@ -684,8 +939,14 @@ impl EmotionEngine {
         map.insert("type".to_string(), "EmotionEngine".to_string());
         map.insert("version".to_string(), "EmotiMem v2.1".to_string());
         map.insert("dimensions".to_string(), "21".to_string());
-        map.insert("active_waves".to_string(), self.active_waves.len().to_string());
-        map.insert("wave_generations".to_string(), self.stats.wave_generations.to_string());
+        map.insert(
+            "active_waves".to_string(),
+            self.active_waves.len().to_string(),
+        );
+        map.insert(
+            "wave_generations".to_string(),
+            self.stats.wave_generations.to_string(),
+        );
         map
     }
 }
@@ -752,9 +1013,18 @@ mod tests {
     fn test_context_detection() {
         let engine = EmotionEngine::new();
 
-        assert_eq!(engine.detect_context("Írj nekem egy függvényt"), ContextType::Coding);
-        assert_eq!(engine.detect_context("Fáradt vagyok, segíts"), ContextType::Support);
-        assert_eq!(engine.detect_context("Hogy vagy?"), ContextType::Conversation);
+        assert_eq!(
+            engine.detect_context("Írj nekem egy függvényt"),
+            ContextType::Coding
+        );
+        assert_eq!(
+            engine.detect_context("Fáradt vagyok, segíts"),
+            ContextType::Support
+        );
+        assert_eq!(
+            engine.detect_context("Hogy vagy?"),
+            ContextType::Conversation
+        );
     }
 
     #[test]

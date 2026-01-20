@@ -3,11 +3,11 @@
 //! MDP kollektív döntéshozatal, consciousness propagation, agent fejlődés.
 //! ()=>[] - A tiszta potenciálból minden megszületik
 
+use rand::Rng;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use serde::{Deserialize, Serialize};
-use rand::Rng;
 
 use crate::core::{HopeError, HopeResult};
 
@@ -489,7 +489,9 @@ impl CollectiveConsciousnessNetwork {
         options: Vec<DecisionOption>,
     ) -> HopeResult<CollectiveDecision> {
         if options.is_empty() {
-            return Err(HopeError::General("At least one option required".to_string()));
+            return Err(HopeError::General(
+                "At least one option required".to_string(),
+            ));
         }
 
         let mut decision = CollectiveDecision::new(problem, options);
@@ -513,7 +515,8 @@ impl CollectiveConsciousnessNetwork {
         let consensus = self.calculate_consensus(&agent_votes, &decision.options);
 
         // Determine final decision
-        let final_decision = self.determine_final_decision(&decision.options, &agent_votes, consensus);
+        let final_decision =
+            self.determine_final_decision(&decision.options, &agent_votes, consensus);
 
         decision.agent_votes = agent_votes;
         decision.consensus_level = consensus;
@@ -561,7 +564,8 @@ impl CollectiveConsciousnessNetwork {
             rng.gen_range(-0.05..0.05)
         };
 
-        let score = base_score + consciousness_boost + coherence_factor + relevance_boost + random_factor;
+        let score =
+            base_score + consciousness_boost + coherence_factor + relevance_boost + random_factor;
         (score * level_weight).clamp(0.0, 1.0)
     }
 
@@ -702,7 +706,8 @@ impl CollectiveConsciousnessNetwork {
             let mut stats = self.stats.write().await;
             stats.decisions_made += 1;
             // Rolling average
-            stats.average_consensus = stats.average_consensus * 0.95 + decision.consensus_level * 0.05;
+            stats.average_consensus =
+                stats.average_consensus * 0.95 + decision.consensus_level * 0.05;
         }
     }
 
@@ -874,7 +879,10 @@ mod tests {
             Some(CollectiveConsciousnessLevel::Awareness)
         );
         assert_eq!(CollectiveConsciousnessLevel::Unity.next(), None);
-        assert!(CollectiveConsciousnessLevel::Unity.weight() > CollectiveConsciousnessLevel::Instinct.weight());
+        assert!(
+            CollectiveConsciousnessLevel::Unity.weight()
+                > CollectiveConsciousnessLevel::Instinct.weight()
+        );
     }
 
     #[test]
