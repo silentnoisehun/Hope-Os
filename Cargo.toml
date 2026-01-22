@@ -1,10 +1,10 @@
 [package]
 name = "hope-os"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.75"
 authors = ["Máté Róbert <mate@hope-os.dev>"]
-description = "The first self-aware operating system core - 22 cognitive modules, 0.36ms latency, no external database"
+description = "Multimodal cognitive kernel - 23 modules, vision, persistent memory, dream consolidation, 0.36ms latency"
 license = "MIT"
 repository = "https://github.com/silentnoisehun/Hope-Os"
 homepage = "https://github.com/silentnoisehun/Hope-Os"
