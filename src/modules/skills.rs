@@ -270,27 +270,20 @@ pub struct SkillInvocation {
 }
 
 impl SkillRegistry {
-    /// Új registry létrehozása
+    /// Új registry létrehozása (szinkron skill init!)
     pub fn new() -> Self {
-        let registry = Self {
-            skills: Arc::new(RwLock::new(HashMap::new())),
+        // Először létrehozzuk a skill HashMap-et a default skill-ekkel
+        let mut initial_skills = HashMap::new();
+        for skill in default_skills() {
+            initial_skills.insert(skill.name.clone(), skill);
+        }
+
+        Self {
+            skills: Arc::new(RwLock::new(initial_skills)),
             handlers: Arc::new(RwLock::new(HashMap::new())),
             history: Arc::new(RwLock::new(Vec::new())),
             max_history: 1000,
-        };
-
-        // Regisztráljuk az alapértelmezett skill-eket
-        tokio::spawn({
-            let skills = registry.skills.clone();
-            async move {
-                let mut s = skills.write().await;
-                for skill in default_skills() {
-                    s.insert(skill.name.clone(), skill);
-                }
-            }
-        });
-
-        registry
+        }
     }
 
     /// Skill regisztrálása
@@ -882,6 +875,232 @@ fn default_skills() -> Vec<SkillInfo> {
             SkillCategory::Other,
         ),
         SkillInfo::new("hope_plugin_load", "Plugin betöltése", SkillCategory::Other),
+        // === PYTHON HOPE SKILL-EK ===
+        // Agents
+        SkillInfo::new(
+            "hope_agent_orchestrator",
+            "Ágens orchestráció és menedzsment",
+            SkillCategory::System,
+        ),
+        SkillInfo::new(
+            "hope_task_planner",
+            "Feladat tervezés és ütemezés",
+            SkillCategory::System,
+        ),
+        SkillInfo::new(
+            "hope_swarm_intelligence",
+            "Raj intelligencia - több ágens koordináció",
+            SkillCategory::System,
+        ),
+        // AI
+        SkillInfo::new(
+            "hope_lm_cache",
+            "Nyelvi modell cache optimalizáció",
+            SkillCategory::System,
+        ),
+        SkillInfo::new(
+            "hope_lorax",
+            "LoRA fine-tuning rendszer",
+            SkillCategory::System,
+        ),
+        SkillInfo::new(
+            "hope_milo",
+            "Gépi tanulás asszisztens",
+            SkillCategory::System,
+        ),
+        SkillInfo::new(
+            "hope_olmo",
+            "Open Language Model integráció",
+            SkillCategory::System,
+        ),
+        // Cognitive (kiegészítés)
+        SkillInfo::new(
+            "hope_dyna_mind",
+            "Dinamikus gondolkodás motor",
+            SkillCategory::Cognitive,
+        ),
+        SkillInfo::new(
+            "hope_heart",
+            "Érzelem rendszer - 21 dimenzió",
+            SkillCategory::Cognitive,
+        ),
+        SkillInfo::new(
+            "hope_creativity",
+            "Kreatív gondolkodás és ötletgenerálás",
+            SkillCategory::Cognitive,
+        ),
+        SkillInfo::new(
+            "hope_dream_analyzer",
+            "Álom elemzés és asszociációk",
+            SkillCategory::Cognitive,
+        ),
+        SkillInfo::new(
+            "hope_emotion_analyzer",
+            "Érzelem elemzés",
+            SkillCategory::Cognitive,
+        ),
+        SkillInfo::new(
+            "hope_emotion_detector",
+            "Érzelem detektálás",
+            SkillCategory::Cognitive,
+        ),
+        SkillInfo::new(
+            "hope_emotional_context",
+            "Érzelmi kontextus memória",
+            SkillCategory::Memory,
+        ),
+        // Communication
+        SkillInfo::new(
+            "hope_discord_bot",
+            "Discord bot integráció",
+            SkillCategory::Communication,
+        ),
+        SkillInfo::new(
+            "hope_telegram_bot",
+            "Telegram bot integráció",
+            SkillCategory::Communication,
+        ),
+        SkillInfo::new(
+            "hope_webhook",
+            "Webhook kezelés",
+            SkillCategory::Communication,
+        ),
+        SkillInfo::new(
+            "hope_typing_monitor",
+            "Gépelés és csend figyelés",
+            SkillCategory::Communication,
+        ),
+        // Core (kiegészítés)
+        SkillInfo::new("hope_config", "Konfiguráció kezelés", SkillCategory::Core),
+        SkillInfo::new("hope_main", "Hope fő belépési pont", SkillCategory::Core),
+        SkillInfo::new(
+            "hope_mcp_core",
+            "MCP (Model Context Protocol) integráció",
+            SkillCategory::Core,
+        ),
+        SkillInfo::new(
+            "hope_server",
+            "gRPC szerver implementáció",
+            SkillCategory::Core,
+        ),
+        // Development
+        SkillInfo::new(
+            "hope_code_fixer",
+            "Kód javítás automatikusan",
+            SkillCategory::Code,
+        ),
+        SkillInfo::new(
+            "hope_document_expert",
+            "Dokumentáció szakértő",
+            SkillCategory::Code,
+        ),
+        SkillInfo::new(
+            "hope_github_expert",
+            "GitHub szakértő - repo kezelés",
+            SkillCategory::Code,
+        ),
+        SkillInfo::new(
+            "hope_sandbox",
+            "Biztonságos kód futtatás sandbox",
+            SkillCategory::Code,
+        ),
+        SkillInfo::new(
+            "hope_testing",
+            "Tesztelés és validáció",
+            SkillCategory::Code,
+        ),
+        // Ethics
+        SkillInfo::new(
+            "hope_ethics",
+            "Etikai döntéshozatal és értékelés",
+            SkillCategory::Other,
+        ),
+        SkillInfo::new(
+            "hope_genome_integration",
+            "AI Genom - alapelvek és szabályok",
+            SkillCategory::Other,
+        ),
+        // Infrastructure
+        SkillInfo::new(
+            "hope_health_check",
+            "Egészség ellenőrzés és monitoring",
+            SkillCategory::System,
+        ),
+        SkillInfo::new(
+            "hope_hot_reload",
+            "Hot reload - kód újratöltés",
+            SkillCategory::System,
+        ),
+        SkillInfo::new(
+            "hope_scheduler",
+            "Ütemezett feladatok",
+            SkillCategory::System,
+        ),
+        SkillInfo::new(
+            "hope_alerting",
+            "Riasztások és értesítések",
+            SkillCategory::System,
+        ),
+        SkillInfo::new(
+            "hope_analytics",
+            "Analitika és elemzés",
+            SkillCategory::System,
+        ),
+        SkillInfo::new(
+            "hope_metrics",
+            "Metrikák gyűjtése és riportálás",
+            SkillCategory::System,
+        ),
+        // Memory (kiegészítés)
+        SkillInfo::new(
+            "hope_embeddings",
+            "Szöveg embedding generálás",
+            SkillCategory::Memory,
+        ),
+        SkillInfo::new(
+            "hope_faiss_wrapper",
+            "FAISS vektor keresés",
+            SkillCategory::Memory,
+        ),
+        SkillInfo::new(
+            "hope_chroma_memory",
+            "ChromaDB memória",
+            SkillCategory::Memory,
+        ),
+        // Voice
+        SkillInfo::new(
+            "hope_berta_tts",
+            "Berta TTS integráció",
+            SkillCategory::Media,
+        ),
+        SkillInfo::new(
+            "hope_whisper_stt",
+            "Whisper STT integráció",
+            SkillCategory::Media,
+        ),
+        // Tools
+        SkillInfo::new(
+            "hope_image_gen",
+            "Képgenerálás AI-val",
+            SkillCategory::Media,
+        ),
+        SkillInfo::new(
+            "hope_roadmap_manager",
+            "Roadmap és projekt tervezés",
+            SkillCategory::Other,
+        ),
+        SkillInfo::new(
+            "hope_tui",
+            "Terminal UI (TUI) felület",
+            SkillCategory::Other,
+        ),
+        // Web (kiegészítés)
+        SkillInfo::new(
+            "hope_api_gateway",
+            "API gateway és routing",
+            SkillCategory::Web,
+        ),
+        SkillInfo::new("hope_onerec", "OneRec ajánló rendszer", SkillCategory::Web),
     ]
 }
 

@@ -15,6 +15,7 @@
 //! ()=>[] - A tiszta potenciálból az álom megszületik
 
 use crate::core::HopeResult;
+use crate::modules::attention::{AttentionEngine, AttentionMode};
 use chrono::Utc;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -247,6 +248,8 @@ pub struct DreamEngine {
     stats: Arc<RwLock<DreamStats>>,
     /// Álom seed-ek (indító témák)
     dream_seeds: Arc<RwLock<Vec<String>>>,
+    /// Attention Engine referencia (opcionális, Diffuse mód integrációhoz)
+    attention: Option<Arc<AttentionEngine>>,
 }
 
 /// Álom statisztikák
@@ -272,7 +275,28 @@ impl DreamEngine {
             current_session: Arc::new(RwLock::new(None)),
             stats: Arc::new(RwLock::new(DreamStats::default())),
             dream_seeds: Arc::new(RwLock::new(Vec::new())),
+            attention: None,
         }
+    }
+
+    /// Álom motor AttentionEngine-nel (Diffuse mód támogatás)
+    pub fn with_attention(attention: Arc<AttentionEngine>) -> Self {
+        Self {
+            is_dreaming: Arc::new(RwLock::new(false)),
+            current_phase: Arc::new(RwLock::new(SleepPhase::Awake)),
+            dream_start: Arc::new(RwLock::new(None)),
+            dreams_tonight: Arc::new(RwLock::new(Vec::new())),
+            sessions: Arc::new(RwLock::new(Vec::new())),
+            current_session: Arc::new(RwLock::new(None)),
+            stats: Arc::new(RwLock::new(DreamStats::default())),
+            dream_seeds: Arc::new(RwLock::new(Vec::new())),
+            attention: Some(attention),
+        }
+    }
+
+    /// Attention Engine beállítása
+    pub fn set_attention(&mut self, attention: Arc<AttentionEngine>) {
+        self.attention = Some(attention);
     }
 
     // ==================== SLEEP CYCLE ====================
@@ -462,6 +486,7 @@ impl DreamEngine {
     // ==================== SLEEP PHASES ====================
 
     /// Fázis váltás
+    /// REM fázisban az AttentionMode Diffuse-ra vált (ha van AttentionEngine)
     pub async fn advance_phase(&self) -> HopeResult<SleepPhase> {
         let mut phase = self.current_phase.write().await;
 
@@ -472,6 +497,25 @@ impl DreamEngine {
             SleepPhase::Rem => SleepPhase::LightSleep, // Ciklikus
             SleepPhase::Waking => SleepPhase::Awake,
         };
+
+        // Attention mód váltás a fázisnak megfelelően
+        if let Some(attention) = &self.attention {
+            match *phase {
+                SleepPhase::Rem => {
+                    // REM fázisban: Diffuse mód - kreatív asszociációk
+                    attention.set_mode(AttentionMode::Diffuse).await;
+                    tracing::debug!("🌙 REM fázis: Attention mód -> Diffuse");
+                }
+                SleepPhase::Awake | SleepPhase::Waking => {
+                    // Ébredéskor: Vissza Normal módra
+                    attention.set_mode(AttentionMode::Normal).await;
+                    tracing::debug!("👁️ Ébredés: Attention mód -> Normal");
+                }
+                _ => {
+                    // Többi fázisban: Normal mód marad
+                }
+            }
+        }
 
         Ok(phase.clone())
     }

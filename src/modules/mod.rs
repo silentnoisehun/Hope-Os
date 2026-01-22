@@ -5,6 +5,7 @@
 
 pub mod agents;
 pub mod alan;
+pub mod attention;
 pub mod aware;
 pub mod code_dna;
 pub mod collective;
@@ -41,6 +42,9 @@ pub use code_dna::{
     Chromosome, CodeDna, CodeDnaConfig, CodeDnaStats, EvolutionResult, Gene, GeneTraits, GeneType,
     MutationType,
 };
+
+// Attention - Fókusz/figyelem kezelés
+pub use attention::{AttentionEngine, AttentionMode, AttentionState, FocusTarget};
 
 // Dream - Álom mód
 pub use dream::{

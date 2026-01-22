@@ -16,7 +16,7 @@ use proto::{
     cognitive_service_client::CognitiveServiceClient, echo_service_client::EchoServiceClient,
     genome_service_client::GenomeServiceClient, hope_service_client::HopeServiceClient,
     knowledge_service_client::KnowledgeServiceClient, memory_service_client::MemoryServiceClient,
-    skill_service_client::SkillServiceClient, *,
+    skill_service_client::SkillServiceClient, vision_service_client::VisionServiceClient, *,
 };
 
 /// Hope gRPC Client
@@ -41,6 +41,8 @@ pub struct HopeClient {
     pub knowledge: KnowledgeServiceClient<Channel>,
     /// Genome szolgáltatás (etika)
     pub genome: GenomeServiceClient<Channel>,
+    /// Vision szolgáltatás (Hope "szeme")
+    pub vision: VisionServiceClient<Channel>,
     /// Szerver cím
     address: String,
 }
@@ -63,6 +65,7 @@ impl HopeClient {
             echo: EchoServiceClient::new(channel.clone()),
             knowledge: KnowledgeServiceClient::new(channel.clone()),
             genome: GenomeServiceClient::new(channel.clone()),
+            vision: VisionServiceClient::new(channel.clone()),
             address: address.to_string(),
         })
     }
@@ -97,6 +100,11 @@ impl HopeClient {
         Ok(response.into_inner())
     }
 
+    /// Szerver állapot (alias for MCP)
+    pub async fn get_status(&mut self) -> HopeResult<StatusResponse> {
+        self.status().await
+    }
+
     /// Életjel
     pub async fn heartbeat(&mut self) -> HopeResult<bool> {
         let response = self.hope.heartbeat(EmptyRequest {}).await?;
@@ -118,16 +126,26 @@ impl HopeClient {
         Ok(response.into_inner().skills)
     }
 
-    /// Skill meghívása
-    pub async fn invoke_skill(
+    /// Skill meghívása (egyszerű)
+    pub async fn invoke_skill_simple(
         &mut self,
         name: &str,
         input: &str,
     ) -> HopeResult<InvokeSkillResponse> {
+        self.invoke_skill(name, input, HashMap::new()).await
+    }
+
+    /// Skill meghívása (teljes)
+    pub async fn invoke_skill(
+        &mut self,
+        name: &str,
+        input: &str,
+        params: HashMap<String, String>,
+    ) -> HopeResult<InvokeSkillResponse> {
         let request = InvokeSkillRequest {
             name: name.to_string(),
             input: input.to_string(),
-            params: HashMap::new(),
+            params,
         };
 
         let response = self.skills.invoke_skill(request).await?;
@@ -136,13 +154,28 @@ impl HopeClient {
 
     // ==================== MEMORY SERVICE ====================
 
-    /// Emlék mentése
-    pub async fn remember(&mut self, content: &str, layer: &str) -> HopeResult<RememberResponse> {
+    /// Emlék mentése (egyszerű)
+    pub async fn remember_simple(
+        &mut self,
+        content: &str,
+        layer: &str,
+    ) -> HopeResult<RememberResponse> {
+        self.remember(content, layer, 0.5, "").await
+    }
+
+    /// Emlék mentése (teljes)
+    pub async fn remember(
+        &mut self,
+        content: &str,
+        layer: &str,
+        importance: f64,
+        emotional_tag: &str,
+    ) -> HopeResult<RememberResponse> {
         let request = RememberRequest {
             content: content.to_string(),
             layer: layer.to_string(),
-            importance: 0.5,
-            emotional_tag: String::new(),
+            importance,
+            emotional_tag: emotional_tag.to_string(),
             metadata: HashMap::new(),
         };
 
@@ -150,12 +183,22 @@ impl HopeClient {
         Ok(response.into_inner())
     }
 
-    /// Emlék keresése
-    pub async fn recall(&mut self, query: &str, layer: &str) -> HopeResult<RecallResponse> {
+    /// Emlék keresése (egyszerű)
+    pub async fn recall_simple(&mut self, query: &str, layer: &str) -> HopeResult<RecallResponse> {
+        self.recall(query, layer, 10).await
+    }
+
+    /// Emlék keresése (teljes)
+    pub async fn recall(
+        &mut self,
+        query: &str,
+        layer: &str,
+        limit: i32,
+    ) -> HopeResult<RecallResponse> {
         let request = RecallRequest {
             query: query.to_string(),
             layer: layer.to_string(),
-            limit: 10,
+            limit,
             min_importance: 0.0,
         };
 
@@ -171,12 +214,22 @@ impl HopeClient {
 
     // ==================== COGNITIVE SERVICE ====================
 
-    /// Gondolkodás
-    pub async fn think(&mut self, input: &str, deep: bool) -> HopeResult<ThinkResponse> {
+    /// Gondolkodás (egyszerű)
+    pub async fn think_simple(&mut self, input: &str, deep: bool) -> HopeResult<ThinkResponse> {
+        self.think(input, deep, "").await
+    }
+
+    /// Gondolkodás (teljes)
+    pub async fn think(
+        &mut self,
+        input: &str,
+        deep: bool,
+        context: &str,
+    ) -> HopeResult<ThinkResponse> {
         let request = ThinkRequest {
             input: input.to_string(),
             deep,
-            context: String::new(),
+            context: context.to_string(),
             focus_areas: Vec::new(),
         };
 
@@ -184,11 +237,23 @@ impl HopeClient {
         Ok(response.into_inner())
     }
 
-    /// Érzelmek beállítása
-    pub async fn feel(&mut self, emotions: HashMap<String, f64>) -> HopeResult<FeelResponse> {
+    /// Érzelmek beállítása (egyszerű)
+    pub async fn feel_simple(
+        &mut self,
+        emotions: HashMap<String, f64>,
+    ) -> HopeResult<FeelResponse> {
+        self.feel(emotions, "").await
+    }
+
+    /// Érzelmek beállítása (teljes)
+    pub async fn feel(
+        &mut self,
+        emotions: HashMap<String, f64>,
+        trigger: &str,
+    ) -> HopeResult<FeelResponse> {
         let request = FeelRequest {
             emotions,
-            trigger: String::new(),
+            trigger: trigger.to_string(),
         };
 
         let response = self.cognitive.feel(request).await?;
@@ -203,32 +268,57 @@ impl HopeClient {
 
     // ==================== CODE SERVICE ====================
 
-    /// Kód elemzés
-    pub async fn analyze_code(
+    /// Kód elemzés (egyszerű)
+    pub async fn analyze_code_simple(
         &mut self,
         code: &str,
         language: &str,
     ) -> HopeResult<AnalyzeResponse> {
+        self.analyze_code(
+            code,
+            language,
+            &["syntax".to_string(), "security".to_string()],
+        )
+        .await
+    }
+
+    /// Kód elemzés (teljes)
+    pub async fn analyze_code(
+        &mut self,
+        code: &str,
+        language: &str,
+        checks: &[String],
+    ) -> HopeResult<AnalyzeResponse> {
         let request = AnalyzeRequest {
             code: code.to_string(),
             language: language.to_string(),
-            checks: vec!["syntax".to_string(), "security".to_string()],
+            checks: checks.to_vec(),
         };
 
         let response = self.code.analyze(request).await?;
         Ok(response.into_inner())
     }
 
-    /// Kód generálás
-    pub async fn generate_code(
+    /// Kód generálás (egyszerű)
+    pub async fn generate_code_simple(
         &mut self,
         description: &str,
         language: &str,
     ) -> HopeResult<GenerateResponse> {
+        self.generate_code(description, language, "").await
+    }
+
+    /// Kód generálás (teljes)
+    pub async fn generate_code(
+        &mut self,
+        description: &str,
+        language: &str,
+        template: &str,
+    ) -> HopeResult<GenerateResponse> {
         let request = GenerateRequest {
             description: description.to_string(),
             language: language.to_string(),
-            template: String::new(),
+            template: template.to_string(),
             params: HashMap::new(),
         };
 
@@ -259,16 +349,27 @@ impl HopeClient {
         Ok(response.into_inner())
     }
 
-    /// Akció ellenőrzése
-    pub async fn genome_verify_action(
+    /// Akció ellenőrzése (egyszerű)
+    pub async fn genome_verify_action_simple(
         &mut self,
         action_type: &str,
         description: &str,
     ) -> HopeResult<VerifyActionResponse> {
+        self.verify_action(action_type, description, HashMap::new())
+            .await
+    }
+
+    /// Akció ellenőrzése (teljes, MCP kompatibilis alias)
+    pub async fn verify_action(
+        &mut self,
+        action_type: &str,
+        description: &str,
+        context: HashMap<String, String>,
+    ) -> HopeResult<VerifyActionResponse> {
         let request = VerifyActionRequest {
             action_type: action_type.to_string(),
             description: description.to_string(),
-            context: HashMap::new(),
+            context,
         };
 
         let response = self.genome.verify_action(request).await?;
@@ -290,6 +391,52 @@ impl HopeClient {
     /// Etikai szabályok
     pub async fn genome_rules(&mut self) -> HopeResult<RulesResponse> {
         let response = self.genome.get_rules(EmptyRequest {}).await?;
+        Ok(response.into_inner())
+    }
+
+    // ==================== VISION SERVICE ====================
+
+    /// Kép feldolgozás (egyszerű)
+    pub async fn see_simple(&mut self, image_data: &[u8]) -> HopeResult<SeeResponse> {
+        self.see(image_data, "", 0.5).await
+    }
+
+    /// Kép feldolgozás (teljes)
+    pub async fn see(
+        &mut self,
+        image_data: &[u8],
+        description: &str,
+        importance: f64,
+    ) -> HopeResult<SeeResponse> {
+        let request = SeeRequest {
+            image_data: image_data.to_vec(),
+            description: description.to_string(),
+            context: String::new(),
+            importance,
+            store_in_memory: true,
+            metadata: HashMap::new(),
+        };
+
+        let response = self.vision.see(request).await?;
+        Ok(response.into_inner())
+    }
+
+    /// Vision státusz
+    pub async fn vision_status(&mut self) -> HopeResult<VisionStatusResponse> {
+        let response = self.vision.get_vision_status(EmptyRequest {}).await?;
+        Ok(response.into_inner())
+    }
+
+    /// Vizuális emlékek
+    pub async fn visual_memories(&mut self, limit: i32) -> HopeResult<VisualMemoriesResponse> {
+        let request = GetVisualMemoriesRequest {
+            limit,
+            min_importance: 0.0,
+            format_filter: String::new(),
+            recent_only: false,
+        };
+
+        let response = self.vision.get_visual_memories(request).await?;
         Ok(response.into_inner())
     }
 }

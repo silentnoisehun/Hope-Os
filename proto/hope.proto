@@ -283,6 +283,17 @@ service CognitiveService {
 
     // Gondolat stream
     rpc StreamThoughts(ThinkRequest) returns (stream ThoughtChunk);
+
+    // === ATTENTION/FOCUS ===
+
+    // Fókusz beállítása kulcsszavakkal
+    rpc SetFocus(SetFocusRequest) returns (SetFocusResponse);
+
+    // Fókusz törlése
+    rpc ClearFocus(EmptyRequest) returns (ClearFocusResponse);
+
+    // Attention állapot lekérdezése
+    rpc GetAttentionState(EmptyRequest) returns (AttentionStateResponse);
 }
 
 message ThinkRequest {
@@ -334,6 +345,38 @@ message ThoughtChunk {
     string thought = 1;
     string type = 2;  // reasoning, emotion, insight
     bool done = 3;
+}
+
+// === ATTENTION/FOCUS Messages ===
+
+message SetFocusRequest {
+    repeated string keywords = 1;        // Kulcsszavak amire fókuszálunk
+    double weight = 2;                   // Súlyozás (1.0 - 3.0)
+    int64 duration_secs = 3;             // Időtartam másodpercben (0 = nincs lejárat)
+}
+
+message SetFocusResponse {
+    bool success = 1;
+    int32 active_targets = 2;            // Aktív fókusz célok száma
+    string message = 3;
+}
+
+message ClearFocusResponse {
+    bool success = 1;
+    int32 cleared = 2;                   // Törölt fókusz célok száma
+}
+
+message FocusTargetInfo {
+    string keyword = 1;
+    double weight = 2;
+    int64 expires_in_secs = 3;           // Hátralévő idő (-1 ha nincs lejárat)
+}
+
+message AttentionStateResponse {
+    repeated FocusTargetInfo targets = 1;  // Aktív fókusz célok
+    double attention_capacity = 2;         // Attention kapacitás (0.0 - 1.0)
+    string mode = 3;                       // "Focused", "Normal", "Diffuse"
+    map<string, double> context_weights = 4;  // Kontextus súlyok
 }
 
 // ============================================================================

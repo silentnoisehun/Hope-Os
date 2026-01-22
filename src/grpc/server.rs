@@ -3,6 +3,7 @@
 //! A Hope OS natív Rust gRPC szervere.
 //! ()=>[] - A tiszta potenciálból minden megszületik
 
+use chrono;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
@@ -10,37 +11,82 @@ use tokio::sync::RwLock;
 use tonic::{transport::Server, Request, Response, Status};
 
 use super::proto::{
+    // CodeService
+    code_service_server::{CodeService, CodeServiceServer},
     // CognitiveService
     cognitive_service_server::{CognitiveService, CognitiveServiceServer},
+    // GenomeService
+    genome_service_server::{GenomeService, GenomeServiceServer},
     // HopeService
     hope_service_server::{HopeService, HopeServiceServer},
     // MemoryService
     memory_service_server::{MemoryService, MemoryServiceServer},
+    // SkillService
+    skill_service_server::{SkillService, SkillServiceServer},
     // VisionService
     vision_service_server::{VisionService, VisionServiceServer},
+    // Code
+    AnalyzeRequest,
+    AnalyzeResponse,
+    AttentionStateResponse,
+    AuditEntry,
+    AuditTrailResponse,
     ChatRequest,
     ChatResponse,
+    ClearFocusResponse,
+    CodeBlock,
+    CodeIssue,
+    CodeMetrics,
     CognitiveStateResponse,
     CompareImagesRequest,
     CompareImagesResponse,
     EmptyRequest,
+    EthicalRule,
     FeelRequest,
     FeelResponse,
+    FocusTargetInfo,
+    GenerateRequest,
+    GenerateResponse,
+    // Genome
+    GenomeStatusResponse,
+    GetAuditTrailRequest,
+    GetCodeBlockRequest,
+    GetSkillRequest,
     GetVisualMemoriesRequest,
     HeartbeatResponse,
     ImageAnalysis,
+    InvokeSkillRequest,
+    InvokeSkillResponse,
+    // Skill
+    ListSkillsRequest,
+    ListSkillsResponse,
+    ListTemplatesRequest,
+    ListTemplatesResponse,
     MemoryItem,
     RecallRequest,
     RecallResponse,
     RememberRequest,
     RememberResponse,
+    RulesResponse,
     SeeRequest,
     SeeResponse,
+    // Attention
+    SetFocusRequest,
+    SetFocusResponse,
+    SignDecisionRequest,
+    SignDecisionResponse,
+    SkillInfo,
+    SkillOutput,
     StatusResponse,
+    StoreCodeBlockRequest,
+    StoreCodeBlockResponse,
+    TemplateInfo,
     ThinkRequest,
     ThinkResponse,
     // Timestamp
     Timestamp,
+    VerifyActionRequest,
+    VerifyActionResponse,
     VisionStatusResponse,
     VisualMemoriesResponse,
     VisualMemoryInfo,
@@ -48,7 +94,8 @@ use super::proto::{
 
 use crate::core::HopeRegistry;
 use crate::data::CodeGraph;
-use crate::modules::{HopeHeart, HopeMemory, HopeSoul, VisionEngine};
+use crate::modules::attention::{AttentionEngine, AttentionMode};
+use crate::modules::{HopeGenome, HopeHeart, HopeMemory, HopeSoul, SkillRegistry, VisionEngine};
 
 // ============================================================================
 // BELSŐ MEMÓRIA STRUKTÚRA (kereséshez)
@@ -89,6 +136,17 @@ impl InternalMemory {
     }
 }
 
+/// Belső kód blokk (CodeService-hez)
+#[derive(Clone, Debug)]
+struct InternalCodeBlock {
+    id: String,
+    code: String,
+    language: String,
+    description: String,
+    created_at: std::time::SystemTime,
+    tags: Vec<String>,
+}
+
 // ============================================================================
 // HOPE GRPC SERVER
 // ============================================================================
@@ -109,6 +167,14 @@ pub struct HopeGrpcServer {
     graph: Arc<CodeGraph>,
     /// Vision Engine - Hope "szeme"
     vision: Arc<RwLock<VisionEngine>>,
+    /// Attention Engine - Fókusz/figyelem kezelése
+    attention: Arc<AttentionEngine>,
+    /// Skill Registry - 97 skill kezelése
+    skills: Arc<RwLock<SkillRegistry>>,
+    /// Hope Genome - AI Etika (7 alapelv)
+    genome: Arc<RwLock<HopeGenome>>,
+    /// Code blocks tároló
+    code_blocks: Arc<RwLock<Vec<InternalCodeBlock>>>,
 }
 
 impl HopeGrpcServer {
@@ -131,6 +197,21 @@ impl HopeGrpcServer {
         let mut vision = VisionEngine::new();
         vision.set_graph(graph.clone());
 
+        // Attention Engine létrehozása
+        let attention = AttentionEngine::new();
+
+        // Skill Registry létrehozása (97 skill)
+        let skills = SkillRegistry::new();
+        let skill_stats = skills.get_stats().await;
+        println!("  SkillRegistry: {} skill", skill_stats.total_skills);
+
+        // Hope Genome létrehozása (7 etikai alapelv)
+        let genome = HopeGenome::new();
+        println!(
+            "  HopeGenome: {} core value",
+            genome.get_core_values().len()
+        );
+
         // Alapértelmezett érzelmek
         let mut emotions = HashMap::new();
         emotions.insert("curiosity".to_string(), 0.8);
@@ -144,6 +225,10 @@ impl HopeGrpcServer {
             emotions: Arc::new(RwLock::new(emotions)),
             graph,
             vision: Arc::new(RwLock::new(vision)),
+            attention: Arc::new(attention),
+            skills: Arc::new(RwLock::new(skills)),
+            genome: Arc::new(RwLock::new(genome)),
+            code_blocks: Arc::new(RwLock::new(Vec::new())),
         })
     }
 
@@ -675,6 +760,99 @@ impl CognitiveService for HopeGrpcServer {
             "StreamThoughts még nincs implementálva",
         ))
     }
+
+    /// SetFocus - Fókusz beállítása kulcsszavakkal
+    async fn set_focus(
+        &self,
+        request: Request<SetFocusRequest>,
+    ) -> Result<Response<SetFocusResponse>, Status> {
+        let req = request.into_inner();
+        println!(
+            "🎯 HOPE: SetFocus kérés: {:?} (weight: {}, duration: {}s)",
+            req.keywords, req.weight, req.duration_secs
+        );
+
+        let duration = if req.duration_secs > 0 {
+            Some(req.duration_secs)
+        } else {
+            None
+        };
+
+        self.attention
+            .set_focus(&req.keywords, req.weight, duration)
+            .await;
+
+        let targets = self.attention.active_targets().await;
+
+        Ok(Response::new(SetFocusResponse {
+            success: true,
+            active_targets: targets.len() as i32,
+            message: format!("Fókusz beállítva: {} kulcsszó", req.keywords.len()),
+        }))
+    }
+
+    /// ClearFocus - Fókusz törlése
+    async fn clear_focus(
+        &self,
+        _request: Request<EmptyRequest>,
+    ) -> Result<Response<ClearFocusResponse>, Status> {
+        println!("🎯 HOPE: ClearFocus kérés");
+
+        let targets_before = self.attention.active_targets().await.len();
+        self.attention.clear_focus().await;
+
+        Ok(Response::new(ClearFocusResponse {
+            success: true,
+            cleared: targets_before as i32,
+        }))
+    }
+
+    /// GetAttentionState - Attention állapot lekérdezése
+    async fn get_attention_state(
+        &self,
+        _request: Request<EmptyRequest>,
+    ) -> Result<Response<AttentionStateResponse>, Status> {
+        println!("🎯 HOPE: GetAttentionState kérés");
+
+        let state = self.attention.state().await;
+
+        let targets: Vec<FocusTargetInfo> = state
+            .focus_targets
+            .iter()
+            .filter(|t| !t.is_expired())
+            .map(|t| {
+                let expires_in = if let Some(expires) = t.expires_at {
+                    let now = chrono::Utc::now();
+                    if expires > now {
+                        (expires - now).num_seconds()
+                    } else {
+                        0
+                    }
+                } else {
+                    -1 // Nincs lejárat
+                };
+
+                FocusTargetInfo {
+                    keyword: t.keyword.clone(),
+                    weight: t.weight,
+                    expires_in_secs: expires_in,
+                }
+            })
+            .collect();
+
+        let mode_str = match state.mode {
+            AttentionMode::Focused => "Focused",
+            AttentionMode::Normal => "Normal",
+            AttentionMode::Diffuse => "Diffuse",
+        };
+
+        Ok(Response::new(AttentionStateResponse {
+            targets,
+            attention_capacity: state.attention_capacity,
+            mode: mode_str.to_string(),
+            context_weights: state.context_weights,
+        }))
+    }
 }
 
 // ============================================================================
@@ -908,6 +1086,608 @@ impl VisionService for HopeGrpcServer {
 }
 
 // ============================================================================
+// SKILL SERVICE IMPLEMENTÁCIÓ - 97 skill
+// ============================================================================
+
+#[tonic::async_trait]
+impl SkillService for HopeGrpcServer {
+    /// ListSkills - Skillek listázása
+    async fn list_skills(
+        &self,
+        request: Request<ListSkillsRequest>,
+    ) -> Result<Response<ListSkillsResponse>, Status> {
+        let req = request.into_inner();
+        println!("HOPE: ListSkills kérés (category: {})", req.category);
+
+        let skills = self.skills.read().await;
+
+        // Parse category ha van
+        let category_filter = if req.category.is_empty() {
+            None
+        } else {
+            // Try to parse category string
+            match req.category.to_lowercase().as_str() {
+                "core" => Some(crate::modules::skills::SkillCategory::Core),
+                "cognitive" => Some(crate::modules::skills::SkillCategory::Cognitive),
+                "memory" => Some(crate::modules::skills::SkillCategory::Memory),
+                "code" => Some(crate::modules::skills::SkillCategory::Code),
+                "system" => Some(crate::modules::skills::SkillCategory::System),
+                "web" => Some(crate::modules::skills::SkillCategory::Web),
+                "media" => Some(crate::modules::skills::SkillCategory::Media),
+                "file" => Some(crate::modules::skills::SkillCategory::File),
+                "git" => Some(crate::modules::skills::SkillCategory::Git),
+                "communication" => Some(crate::modules::skills::SkillCategory::Communication),
+                _ => None,
+            }
+        };
+
+        let search_filter = if req.search.is_empty() {
+            None
+        } else {
+            Some(req.search.as_str())
+        };
+
+        let all_skills = skills.list(category_filter, search_filter).await;
+
+        let filtered: Vec<SkillInfo> = all_skills
+            .into_iter()
+            .skip(req.offset as usize)
+            .take(if req.limit > 0 {
+                req.limit as usize
+            } else {
+                100
+            })
+            .map(|s| SkillInfo {
+                name: s.name.clone(),
+                description: s.description.clone(),
+                category: s.category.to_string(),
+                tags: s.params.iter().map(|p| p.name.clone()).collect(), // Params -> tags
+                version: s.version.clone(),
+                enabled: s.enabled,
+            })
+            .collect();
+
+        let total = filtered.len() as i32;
+
+        Ok(Response::new(ListSkillsResponse {
+            skills: filtered,
+            total,
+        }))
+    }
+
+    /// GetSkill - Egy skill lekérdezése
+    async fn get_skill(
+        &self,
+        request: Request<GetSkillRequest>,
+    ) -> Result<Response<SkillInfo>, Status> {
+        let req = request.into_inner();
+        let skills = self.skills.read().await;
+
+        match skills.get(&req.name).await {
+            Some(s) => Ok(Response::new(SkillInfo {
+                name: s.name.clone(),
+                description: s.description.clone(),
+                category: s.category.to_string(),
+                tags: s.params.iter().map(|p| p.name.clone()).collect(),
+                version: s.version.clone(),
+                enabled: s.enabled,
+            })),
+            None => Err(Status::not_found(format!(
+                "Skill nem található: {}",
+                req.name
+            ))),
+        }
+    }
+
+    /// InvokeSkill - Skill meghívása
+    async fn invoke_skill(
+        &self,
+        request: Request<InvokeSkillRequest>,
+    ) -> Result<Response<InvokeSkillResponse>, Status> {
+        let req = request.into_inner();
+        let start = Instant::now();
+        println!(
+            "HOPE: InvokeSkill kérés: {} (input: {})",
+            req.name, req.input
+        );
+
+        let skills = self.skills.read().await;
+
+        // Convert String params to serde_json::Value
+        let params: HashMap<String, serde_json::Value> = req
+            .params
+            .into_iter()
+            .map(|(k, v)| (k, serde_json::Value::String(v)))
+            .collect();
+
+        match skills.invoke(&req.name, &req.input, &params).await {
+            Ok(result) => Ok(Response::new(InvokeSkillResponse {
+                success: result.success,
+                output: if result.success {
+                    result.output.clone()
+                } else {
+                    String::new()
+                },
+                error: if result.success {
+                    String::new()
+                } else {
+                    result.output
+                },
+                execution_time: result.execution_time_ms / 1000.0, // ms -> sec
+            })),
+            Err(e) => Ok(Response::new(InvokeSkillResponse {
+                success: false,
+                output: String::new(),
+                error: e.to_string(),
+                execution_time: start.elapsed().as_secs_f64(),
+            })),
+        }
+    }
+
+    /// StreamSkillOutput - Streaming skill output
+    type StreamSkillOutputStream =
+        tokio_stream::wrappers::ReceiverStream<Result<SkillOutput, Status>>;
+
+    async fn stream_skill_output(
+        &self,
+        _request: Request<InvokeSkillRequest>,
+    ) -> Result<Response<Self::StreamSkillOutputStream>, Status> {
+        Err(Status::unimplemented(
+            "StreamSkillOutput még nincs implementálva",
+        ))
+    }
+}
+
+// ============================================================================
+// GENOME SERVICE IMPLEMENTÁCIÓ - AI Etika (7 alapelv)
+// ============================================================================
+
+#[tonic::async_trait]
+impl GenomeService for HopeGrpcServer {
+    /// GetStatus - Genom állapot lekérdezése
+    async fn get_status(
+        &self,
+        _request: Request<EmptyRequest>,
+    ) -> Result<Response<GenomeStatusResponse>, Status> {
+        let genome = self.genome.read().await;
+        let stats = &genome.stats;
+
+        Ok(Response::new(GenomeStatusResponse {
+            enabled: true,
+            sealed: true, // Az alapelvek megváltoztathatatlanok
+            rules_count: genome.get_core_values().len() as i32,
+            violations: stats.denied as i32,
+            max_violations: 100,
+            total_actions: stats.evaluations as i32,
+            approved_actions: stats.permitted as i32,
+            denied_actions: stats.denied as i32,
+            integrity_hash: format!(
+                "{:x}",
+                md5::compute(format!("{:?}", genome.get_core_values()).as_bytes())
+            ),
+        }))
+    }
+
+    /// VerifyAction - Akció ellenőrzése etikai szempontból
+    async fn verify_action(
+        &self,
+        request: Request<VerifyActionRequest>,
+    ) -> Result<Response<VerifyActionResponse>, Status> {
+        let req = request.into_inner();
+        println!(
+            "HOPE: VerifyAction kérés: {} - {}",
+            req.action_type, req.description
+        );
+
+        let mut genome = self.genome.write().await;
+
+        // EvaluationContext létrehozása
+        let context = crate::modules::genome::EvaluationContext::new()
+            .with_intent(&req.description)
+            .with_target(&req.action_type);
+
+        // A teljes akció string
+        let action = format!("{}: {}", req.action_type, req.description);
+
+        let result = genome.evaluate(&action, &context);
+
+        Ok(Response::new(VerifyActionResponse {
+            allowed: result.permitted,
+            reason: if result.concerns.is_empty() {
+                "Akció engedélyezve".to_string()
+            } else {
+                result.concerns.join("; ")
+            },
+            violated_rules: result.concerns.clone(),
+            decision_id: uuid::Uuid::new_v4().to_string(),
+        }))
+    }
+
+    /// SignDecision - Döntés aláírása
+    async fn sign_decision(
+        &self,
+        request: Request<SignDecisionRequest>,
+    ) -> Result<Response<SignDecisionResponse>, Status> {
+        let req = request.into_inner();
+
+        // Egyszerű aláírás generálás (hash)
+        let signature_input = format!("{}:{}:{}", req.decision_id, req.action_type, req.outcome);
+        let signature = format!("HOPE-SIG-{:x}", md5::compute(signature_input.as_bytes()));
+
+        Ok(Response::new(SignDecisionResponse {
+            signature,
+            success: true,
+            message: "Döntés aláírva".to_string(),
+        }))
+    }
+
+    /// GetAuditTrail - Audit napló lekérdezése
+    async fn get_audit_trail(
+        &self,
+        request: Request<GetAuditTrailRequest>,
+    ) -> Result<Response<AuditTrailResponse>, Status> {
+        let req = request.into_inner();
+        let genome = self.genome.read().await;
+
+        // Audit események lekérése (history)
+        let entries: Vec<AuditEntry> = genome
+            .get_history()
+            .iter()
+            .filter(|e| req.action_type.is_empty() || e.action.contains(&req.action_type))
+            .take(if req.limit > 0 {
+                req.limit as usize
+            } else {
+                50
+            })
+            .map(|e| AuditEntry {
+                id: format!("{:.0}", e.timestamp),
+                action_type: e.action.clone(),
+                description: e.recommendations.join("; "),
+                allowed: e.permitted,
+                reason: e.concerns.join("; "),
+                signature: format!("HOPE-{:x}", md5::compute(e.action.as_bytes())),
+                timestamp: Some(Timestamp {
+                    seconds: e.timestamp as i64,
+                    nanos: 0,
+                }),
+            })
+            .collect();
+
+        let total = entries.len() as i32;
+
+        Ok(Response::new(AuditTrailResponse { entries, total }))
+    }
+
+    /// GetRules - Etikai szabályok lekérdezése
+    async fn get_rules(
+        &self,
+        _request: Request<EmptyRequest>,
+    ) -> Result<Response<RulesResponse>, Status> {
+        let genome = self.genome.read().await;
+
+        // Core values mint szabályok
+        let rules: Vec<EthicalRule> = genome
+            .get_core_values()
+            .iter()
+            .enumerate()
+            .map(|(i, value)| EthicalRule {
+                id: format!("CORE_VALUE_{}", i + 1),
+                name: value.clone(),
+                description: format!("Core value: {}", value),
+                category: "core".to_string(),
+                priority: (i + 1) as i32,
+                immutable: true,
+            })
+            .collect();
+
+        Ok(Response::new(RulesResponse { rules }))
+    }
+}
+
+// ============================================================================
+// CODE SERVICE IMPLEMENTÁCIÓ - Kód elemzés és generálás
+// ============================================================================
+
+#[tonic::async_trait]
+impl CodeService for HopeGrpcServer {
+    /// Analyze - Kód elemzés
+    async fn analyze(
+        &self,
+        request: Request<AnalyzeRequest>,
+    ) -> Result<Response<AnalyzeResponse>, Status> {
+        let req = request.into_inner();
+        println!(
+            "HOPE: Analyze kérés ({} bytes, {})",
+            req.code.len(),
+            req.language
+        );
+
+        let mut issues = Vec::new();
+        let code = &req.code;
+        let checks = if req.checks.is_empty() {
+            vec!["syntax".to_string()]
+        } else {
+            req.checks
+        };
+
+        // Syntax ellenőrzés
+        if checks.contains(&"syntax".to_string()) {
+            // Alapvető syntax problémák keresése
+            let lines: Vec<&str> = code.lines().collect();
+
+            for (line_num, line) in lines.iter().enumerate() {
+                // Nyitó zárójelek ellenőrzése
+                let open_parens = line.matches('(').count();
+                let close_parens = line.matches(')').count();
+                if open_parens != close_parens {
+                    issues.push(CodeIssue {
+                        severity: "warning".to_string(),
+                        message: "Páratlan zárójelek".to_string(),
+                        line: (line_num + 1) as i32,
+                        column: 1,
+                        rule: "syntax/parens".to_string(),
+                    });
+                }
+
+                // Üres return ellenőrzése
+                if line.contains("return;") && req.language == "rust" {
+                    issues.push(CodeIssue {
+                        severity: "info".to_string(),
+                        message: "Üres return Rust-ban opcionális".to_string(),
+                        line: (line_num + 1) as i32,
+                        column: 1,
+                        rule: "style/return".to_string(),
+                    });
+                }
+            }
+        }
+
+        // Security ellenőrzés
+        if checks.contains(&"security".to_string()) {
+            // Veszélyes minták keresése
+            let dangerous_patterns = vec![
+                ("unsafe", "unsafe blokk használata"),
+                ("eval(", "eval() használata veszélyes"),
+                ("exec(", "exec() használata veszélyes"),
+                ("system(", "system() hívás veszélyes"),
+                ("password", "hardcoded jelszó?"),
+                ("secret", "hardcoded titok?"),
+            ];
+
+            for (pattern, message) in dangerous_patterns {
+                if code.to_lowercase().contains(pattern) {
+                    for (line_num, line) in code.lines().enumerate() {
+                        if line.to_lowercase().contains(pattern) {
+                            issues.push(CodeIssue {
+                                severity: "warning".to_string(),
+                                message: message.to_string(),
+                                line: (line_num + 1) as i32,
+                                column: 1,
+                                rule: format!("security/{}", pattern),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        // Metrikák számítása
+        let lines = code.lines().count();
+        let functions = code.matches("fn ").count()
+            + code.matches("function ").count()
+            + code.matches("def ").count();
+        let classes = code.matches("struct ").count() + code.matches("class ").count();
+
+        let metrics = CodeMetrics {
+            lines: lines as i32,
+            complexity: (lines / 10).max(1) as i32, // Egyszerű becslés
+            functions: functions as i32,
+            classes: classes as i32,
+            maintainability: if issues.is_empty() { 0.9 } else { 0.7 },
+        };
+
+        let valid = !issues.iter().any(|i| i.severity == "error");
+
+        Ok(Response::new(AnalyzeResponse {
+            valid,
+            issues,
+            metrics: Some(metrics),
+            suggestions: vec!["Rendszeres refaktorálás ajánlott".to_string()],
+        }))
+    }
+
+    /// Generate - Kód generálás
+    async fn generate(
+        &self,
+        request: Request<GenerateRequest>,
+    ) -> Result<Response<GenerateResponse>, Status> {
+        let req = request.into_inner();
+        println!(
+            "HOPE: Generate kérés: {} ({})",
+            req.description, req.language
+        );
+
+        // Egyszerű sablon alapú generálás
+        let code = match req.language.to_lowercase().as_str() {
+            "rust" => {
+                if req.description.to_lowercase().contains("hello") {
+                    r#"fn main() {
+    println!("Hello, World!");
+}"#
+                    .to_string()
+                } else if req.description.to_lowercase().contains("struct") {
+                    format!(
+                        r#"#[derive(Debug, Clone)]
+pub struct {} {{
+    // TODO: Add fields
+}}
+
+impl {} {{
+    pub fn new() -> Self {{
+        Self {{}}
+    }}
+}}"#,
+                        "MyStruct", "MyStruct"
+                    )
+                } else {
+                    format!(
+                        "// Generated for: {}\nfn main() {{\n    // TODO: Implement\n}}",
+                        req.description
+                    )
+                }
+            }
+            "python" => {
+                if req.description.to_lowercase().contains("hello") {
+                    r#"def main():
+    print("Hello, World!")
+
+if __name__ == "__main__":
+    main()"#
+                        .to_string()
+                } else {
+                    format!(
+                        "# Generated for: {}\ndef main():\n    # TODO: Implement\n    pass",
+                        req.description
+                    )
+                }
+            }
+            "javascript" | "js" | "typescript" | "ts" => {
+                if req.description.to_lowercase().contains("hello") {
+                    r#"function main() {
+    console.log("Hello, World!");
+}
+
+main();"#
+                        .to_string()
+                } else {
+                    format!(
+                        "// Generated for: {}\nfunction main() {{\n    // TODO: Implement\n}}",
+                        req.description
+                    )
+                }
+            }
+            _ => format!(
+                "// Generated for: {} ({})\n// TODO: Implement",
+                req.description, req.language
+            ),
+        };
+
+        Ok(Response::new(GenerateResponse {
+            code,
+            explanation: format!("Kód generálva: {}", req.description),
+            dependencies: vec![],
+        }))
+    }
+
+    /// ListTemplates - Sablonok listázása
+    async fn list_templates(
+        &self,
+        request: Request<ListTemplatesRequest>,
+    ) -> Result<Response<ListTemplatesResponse>, Status> {
+        let req = request.into_inner();
+
+        let mut templates = vec![
+            TemplateInfo {
+                name: "hello_world".to_string(),
+                description: "Hello World alap példa".to_string(),
+                language: "rust".to_string(),
+                category: "basic".to_string(),
+                params: vec![],
+            },
+            TemplateInfo {
+                name: "struct".to_string(),
+                description: "Struct definíció".to_string(),
+                language: "rust".to_string(),
+                category: "types".to_string(),
+                params: vec!["name".to_string()],
+            },
+            TemplateInfo {
+                name: "grpc_service".to_string(),
+                description: "gRPC szolgáltatás".to_string(),
+                language: "rust".to_string(),
+                category: "networking".to_string(),
+                params: vec!["service_name".to_string()],
+            },
+            TemplateInfo {
+                name: "async_function".to_string(),
+                description: "Async függvény".to_string(),
+                language: "rust".to_string(),
+                category: "async".to_string(),
+                params: vec!["name".to_string()],
+            },
+        ];
+
+        // Szűrés
+        if !req.language.is_empty() {
+            templates.retain(|t| t.language.to_lowercase() == req.language.to_lowercase());
+        }
+        if !req.category.is_empty() {
+            templates.retain(|t| t.category.to_lowercase() == req.category.to_lowercase());
+        }
+
+        Ok(Response::new(ListTemplatesResponse { templates }))
+    }
+
+    /// GetCodeBlock - Kód blokk lekérdezése
+    async fn get_code_block(
+        &self,
+        request: Request<GetCodeBlockRequest>,
+    ) -> Result<Response<CodeBlock>, Status> {
+        let req = request.into_inner();
+        let blocks = self.code_blocks.read().await;
+
+        match blocks.iter().find(|b| b.id == req.id) {
+            Some(b) => {
+                let duration = b
+                    .created_at
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default();
+
+                Ok(Response::new(CodeBlock {
+                    id: b.id.clone(),
+                    code: b.code.clone(),
+                    language: b.language.clone(),
+                    description: b.description.clone(),
+                    created_at: Some(Timestamp {
+                        seconds: duration.as_secs() as i64,
+                        nanos: duration.subsec_nanos() as i32,
+                    }),
+                }))
+            }
+            None => Err(Status::not_found(format!(
+                "CodeBlock nem található: {}",
+                req.id
+            ))),
+        }
+    }
+
+    /// StoreCodeBlock - Kód blokk mentése
+    async fn store_code_block(
+        &self,
+        request: Request<StoreCodeBlockRequest>,
+    ) -> Result<Response<StoreCodeBlockResponse>, Status> {
+        let req = request.into_inner();
+        let id = uuid::Uuid::new_v4().to_string();
+
+        let block = InternalCodeBlock {
+            id: id.clone(),
+            code: req.code,
+            language: req.language,
+            description: req.description,
+            created_at: std::time::SystemTime::now(),
+            tags: req.tags,
+        };
+
+        let mut blocks = self.code_blocks.write().await;
+        blocks.push(block);
+
+        println!("HOPE: CodeBlock mentve: {} ({} blocks)", id, blocks.len());
+
+        Ok(Response::new(StoreCodeBlockResponse { id, success: true }))
+    }
+}
+
+// ============================================================================
 // SZERVER INDÍTÁS
 // ============================================================================
 
@@ -937,13 +1717,17 @@ pub async fn start_server(addr: &str) -> Result<(), Box<dyn std::error::Error>> 
     println!("    HopeHeart");
     println!("    Smart Search Engine");
     println!("    VisionEngine (👁️ Hope szeme)");
+    println!("    AttentionEngine (🎯 Fókusz/Figyelem)");
 
     println!("\n  gRPC szerver indítása: {}", addr);
     println!("  Szolgáltatások:");
     println!("    HopeService      - /hope.HopeService/*");
     println!("    MemoryService    - /hope.MemoryService/* (Smart Search!)");
-    println!("    CognitiveService - /hope.CognitiveService/*");
+    println!("    CognitiveService - /hope.CognitiveService/* (+ Attention!)");
     println!("    VisionService    - /hope.VisionService/* (👁️ Látás!)");
+    println!("    SkillService     - /hope.SkillService/* (97 skill!)");
+    println!("    GenomeService    - /hope.GenomeService/* (7 etikai alapelv!)");
+    println!("    CodeService      - /hope.CodeService/* (Kód elemzés!)");
     println!("\n  Ctrl+C a leállításhoz\n");
 
     Server::builder()
@@ -951,6 +1735,9 @@ pub async fn start_server(addr: &str) -> Result<(), Box<dyn std::error::Error>> 
         .add_service(MemoryServiceServer::from_arc(server.clone()))
         .add_service(CognitiveServiceServer::from_arc(server.clone()))
         .add_service(VisionServiceServer::from_arc(server.clone()))
+        .add_service(SkillServiceServer::from_arc(server.clone()))
+        .add_service(GenomeServiceServer::from_arc(server.clone()))
+        .add_service(CodeServiceServer::from_arc(server.clone()))
         .serve(addr)
         .await?;
 

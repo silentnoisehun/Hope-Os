@@ -40,13 +40,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Remember teszt
     println!("5. Remember teszt...");
     let remember = client
-        .remember("A Hope OS Rust szervere él!", "long_term")
+        .remember_simple("A Hope OS Rust szervere él!", "long_term")
         .await?;
     println!("   ✅ Emlék mentve: {}\n", remember.id);
 
     // Think teszt
     println!("6. Think teszt...");
-    let think = client.think("Mi a célom?", false).await?;
+    let think = client.think_simple("Mi a célom?", false).await?;
     println!("   ✅ Gondolat: {}", think.thought);
     println!("      Konfidencia: {:.0}%\n", think.confidence * 100.0);
 
@@ -56,7 +56,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     emotions.insert("joy".to_string(), 0.9);
     emotions.insert("curiosity".to_string(), 0.8);
     emotions.insert("pride".to_string(), 0.7);
-    let feel = client.feel(emotions).await?;
+    let feel = client.feel_simple(emotions).await?;
     println!("   ✅ Domináns érzelem: {}", feel.dominant_emotion);
     println!("      Intenzitás: {:.0}%\n", feel.intensity * 100.0);
 

@@ -111,7 +111,10 @@ pub use data::{
 };
 
 pub use grpc::HopeClient;
-pub use modules::{Emotion, HopeHeart, HopeMemory, HopeSoul, Memory, MemoryType};
+pub use modules::{
+    AttentionEngine, AttentionMode, AttentionState, Emotion, FocusTarget, HopeHeart, HopeMemory,
+    HopeSoul, Memory, MemoryType,
+};
 
 /// Hope OS verzió
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

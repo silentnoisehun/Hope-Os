@@ -386,7 +386,7 @@ async fn cmd_py_skills(server: &str) -> HopeResult<()> {
 
 async fn cmd_py_invoke(server: &str, name: &str, input: &str) -> HopeResult<()> {
     let mut client = HopeClient::connect(server).await?;
-    let response = client.invoke_skill(name, input).await?;
+    let response = client.invoke_skill_simple(name, input).await?;
 
     if response.success {
         println!("✅ Eredmény:\n{}", response.output);
@@ -399,7 +399,7 @@ async fn cmd_py_invoke(server: &str, name: &str, input: &str) -> HopeResult<()> 
 
 async fn cmd_py_remember(server: &str, content: &str, layer: &str) -> HopeResult<()> {
     let mut client = HopeClient::connect(server).await?;
-    let response = client.remember(content, layer).await?;
+    let response = client.remember_simple(content, layer).await?;
 
     if response.success {
         println!("✅ Emlék mentve");
@@ -414,7 +414,7 @@ async fn cmd_py_remember(server: &str, content: &str, layer: &str) -> HopeResult
 
 async fn cmd_py_recall(server: &str, query: &str, layer: &str) -> HopeResult<()> {
     let mut client = HopeClient::connect(server).await?;
-    let response = client.recall(query, layer).await?;
+    let response = client.recall_simple(query, layer).await?;
 
     println!("🔍 Találatok ({}):\n", response.total);
     for memory in &response.memories {
@@ -431,7 +431,7 @@ async fn cmd_py_recall(server: &str, query: &str, layer: &str) -> HopeResult<()>
 
 async fn cmd_py_think(server: &str, input: &str, deep: bool) -> HopeResult<()> {
     let mut client = HopeClient::connect(server).await?;
-    let response = client.think(input, deep).await?;
+    let response = client.think_simple(input, deep).await?;
 
     println!("💭 Gondolat:\n{}", response.thought);
 
@@ -498,7 +498,7 @@ async fn cmd_py_genome_verify(
 ) -> HopeResult<()> {
     let mut client = HopeClient::connect(server).await?;
     let response = client
-        .genome_verify_action(action_type, description)
+        .genome_verify_action_simple(action_type, description)
         .await?;
 
     if response.allowed {
