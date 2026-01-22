@@ -26,6 +26,7 @@ pub mod swarm;
 pub mod templates;
 pub mod vision;
 pub mod voice;
+pub mod resonance;
 
 // Agents - Multi-agent koordináció
 pub use agents::{
@@ -143,4 +144,10 @@ pub use collective::{
     AgentConsciousnessState, AgentType, CollectiveConsciousnessLevel,
     CollectiveConsciousnessNetwork, CollectiveDecision, CollectiveNetworkState, CollectiveSense,
     CollectiveStats, ConsciousnessFlowEvent, DecisionOption,
+};
+
+// Resonance - Rezonancia alapú autentikáció
+pub use resonance::{
+    Anomaly, PatternType, PunctuationPattern, ResonanceEngine, ResonanceMatch, ResonanceProfile,
+    ResonanceStatus, ResonanceWeights, SessionData, UserInput,
 };

@@ -1104,3 +1104,91 @@ message CompareImagesResponse {
     double size_similarity = 3;     // Méret hasonlóság
     string comparison_notes = 4;
 }
+
+// ============================================================================
+// RESONANCE SERVICE - Rezonancia alapú autentikáció
+// ============================================================================
+
+service ResonanceService {
+    // Tanulás felhasználói bemenetből
+    rpc Learn(ResonanceLearnRequest) returns (ResonanceLearnResponse);
+
+    // Felhasználó verifikáció
+    rpc Verify(ResonanceVerifyRequest) returns (ResonanceVerifyResponse);
+
+    // Státusz lekérdezése
+    rpc GetStatus(EmptyRequest) returns (ResonanceStatusResponse);
+
+    // Profil regisztrálása
+    rpc RegisterUser(RegisterUserRequest) returns (RegisterUserResponse);
+
+    // Anomália detekció
+    rpc DetectAnomaly(DetectAnomalyRequest) returns (DetectAnomalyResponse);
+}
+
+message ResonanceLearnRequest {
+    string content = 1;
+    string session_id = 2;
+    repeated double keystroke_timings = 3;
+    repeated double emotional_state = 4;  // 21D
+}
+
+message ResonanceLearnResponse {
+    bool success = 1;
+    double confidence = 2;
+    int64 sample_count = 3;
+}
+
+message ResonanceVerifyRequest {
+    string session_id = 1;
+    repeated ResonanceInput inputs = 2;
+}
+
+message ResonanceInput {
+    string content = 1;
+    int64 timestamp_ms = 2;
+    repeated double keystroke_timings = 3;
+    repeated double emotional_state = 4;
+}
+
+message ResonanceVerifyResponse {
+    bool is_authentic = 1;
+    double confidence = 2;
+    string user_id = 3;
+    string user_name = 4;
+    repeated string matched_patterns = 5;
+    bool is_new_user = 6;
+    bool altered_state = 7;
+    bool potential_attack = 8;
+}
+
+message ResonanceStatusResponse {
+    int32 profile_count = 1;
+    int64 total_samples = 2;
+    double avg_confidence = 3;
+    int32 current_session_messages = 4;
+    int64 current_session_duration_secs = 5;
+    double match_threshold = 6;
+}
+
+message RegisterUserRequest {
+    string user_id = 1;
+    string user_name = 2;
+}
+
+message RegisterUserResponse {
+    string profile_id = 1;
+    bool success = 2;
+}
+
+message DetectAnomalyRequest {
+    string content = 1;
+    string session_id = 2;
+}
+
+message DetectAnomalyResponse {
+    bool has_anomaly = 1;
+    string pattern_type = 2;
+    double deviation = 3;
+    string description = 4;
+}
