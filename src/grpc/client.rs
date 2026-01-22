@@ -782,7 +782,8 @@ impl HopeClient {
         Ok(response.into_inner())
     }
 
-    /// Útvonal tervezése kontextussal
+    /// Plan route with full context
+    #[allow(clippy::too_many_arguments)]
     pub async fn plan_route_with_context(
         &mut self,
         origin_lat: f64,

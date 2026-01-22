@@ -457,10 +457,10 @@ pub struct ContextSuggestion {
     pub action: Option<SuggestedAction>,
 }
 
-/// Javasolt akció
+/// Suggested action during navigation
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SuggestedAction {
-    AddStop { place: Place },
+    AddStop { place: Box<Place> },
     ChangeRoute { reason: String },
     RemindLater { message: String },
     CallPerson { name: String },
@@ -942,13 +942,12 @@ impl NavigationEngine {
                 history.push(completed.clone());
             }
 
-            // Statisztika frissítés
+            // Update statistics
             {
                 let mut stats = self.stats.write().await;
                 stats.total_routes_completed += 1;
                 stats.total_distance_km += completed.actual_distance_km;
-                stats.total_time_navigating =
-                    stats.total_time_navigating + completed.actual_duration;
+                stats.total_time_navigating += completed.actual_duration;
             }
 
             // Tanulás
@@ -1064,21 +1063,21 @@ impl NavigationEngine {
         // Hozzáadás az útvonalon talált helyekhez
         for place in &route.places_on_route {
             ctx.suggestions.push(ContextSuggestion {
-                text: format!("{} útba esik", place.name),
+                text: format!("{} is on the way", place.name),
                 relevance: 0.7,
                 action: Some(SuggestedAction::AddStop {
-                    place: place.clone(),
+                    place: Box::new(place.clone()),
                 }),
             });
         }
 
-        // Javasolt megállók
+        // Suggested stops
         for stop in &route.suggested_stops {
             ctx.suggestions.push(ContextSuggestion {
                 text: format!("{}: {}", stop.place.name, stop.reason),
                 relevance: stop.relevance_score,
                 action: Some(SuggestedAction::AddStop {
-                    place: stop.place.clone(),
+                    place: Box::new(stop.place.clone()),
                 }),
             });
         }

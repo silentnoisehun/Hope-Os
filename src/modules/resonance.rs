@@ -442,10 +442,8 @@ impl ResonanceEngine {
         // Szöveg elemzés
         let content = &input.content;
 
-        // Mondat hossz
-        let sentences: Vec<&str> = content
-            .split(|c| c == '.' || c == '!' || c == '?')
-            .collect();
+        // Sentence length analysis
+        let sentences: Vec<&str> = content.split(['.', '!', '?']).collect();
         let avg_len = if sentences.is_empty() {
             0.0
         } else {
@@ -495,12 +493,12 @@ impl ResonanceEngine {
             }
         }
 
-        // Érzelmi állapot
+        // Emotional state
         if let Some(emotions) = &input.emotional_state {
-            for i in 0..21 {
+            for (i, &emotion_val) in emotions.iter().enumerate().take(21) {
                 profile.emotional_baseline[i] = (profile.emotional_baseline[i]
                     * (profile.sample_count - 1) as f64
-                    + emotions[i])
+                    + emotion_val)
                     / profile.sample_count as f64;
             }
         }
