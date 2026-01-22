@@ -14,8 +14,8 @@
   <a href="#-vision"><img src="https://img.shields.io/badge/vision-multimodal-purple" alt="Multimodal"/></a>
   <a href="#-persistence"><img src="https://img.shields.io/badge/memory-persistent-blue" alt="Persistent"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License"/></a>
-  <a href="#"><img src="https://img.shields.io/badge/tests-221%20passing-brightgreen" alt="Tests"/></a>
-  <a href="#-mcp-server"><img src="https://img.shields.io/badge/MCP-37%20tools-orange" alt="MCP Tools"/></a>
+  <a href="#"><img src="https://img.shields.io/badge/tests-277%20passing-brightgreen" alt="Tests"/></a>
+  <a href="#-mcp-server"><img src="https://img.shields.io/badge/MCP-57%20tools-orange" alt="MCP Tools"/></a>
   <a href="#-skills"><img src="https://img.shields.io/badge/skills-97-yellow" alt="Skills"/></a>
 </p>
 
@@ -37,7 +37,7 @@ cd Hope-Os
 # Build (release mode for best performance)
 cargo build --release
 
-# Run tests (221 tests)
+# Run tests (277 tests)
 cargo test
 ```
 
@@ -68,18 +68,16 @@ pip install git+https://github.com/silentnoisehun/Hope-Os
 
 **Hope OS is a multimodal cognitive kernel.** It handles memory, vision, emotional state, and safety constraints locally in microseconds - tasks that would otherwise require expensive LLM API calls.
 
-### v0.2.1 Highlights
+### v0.2.5 Highlights
 
 | Feature | Description |
 |---------|-------------|
-| **🔌 MCP Server** | 37 tools for Claude Desktop/Cursor integration via stdio JSON-RPC |
-| **🎯 Attention Engine** | Focus/attention management with Focused/Normal/Diffuse modes |
-| **⚡ 97 Skills** | Complete skill registry migrated from Python Hope |
-| **🧬 Full gRPC Services** | SkillService, GenomeService, CodeService fully implemented |
-| **👁️ Multimodal Vision** | Receives, analyzes, and stores images (PNG, JPEG, WebP, GIF) |
-| **💾 Persistent Memory** | Survives restarts via GraphSnapshot - "immortal" memories |
-| **😴 Dream Phase** | Background consolidation with Diffuse attention mode |
-| **✅ 221 Tests** | Comprehensive test coverage across all modules |
+| **57 MCP Tools** | Full Claude Desktop / Cursor integration |
+| **Resonance Auth** | Password-free identity verification |
+| **Geolocation** | Spatial memory + place learning |
+| **Voice System** | TTS/STT streaming with Piper + Whisper |
+| **Navigation** | Mood-aware routing + destination prediction |
+| **277 Tests** | Comprehensive coverage across all modules |
 
 ### The Key Insight
 
@@ -379,16 +377,16 @@ async fn main() {
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
-### Full System Architecture (v0.2.1)
+### Full System Architecture (v0.2.5)
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
-│                           HOPE OS v0.2.1                                  │
+│                           HOPE OS v0.2.5                                  │
 ├──────────────────────────────────────────────────────────────────────────┤
 │                                                                           │
 │  ┌───────────────────────────────────────────────────────────────────┐   │
 │  │                      MCP SERVER (stdio)                            │   │
-│  │                    37 tools for Claude/Cursor                      │   │
+│  │                    57 tools for Claude/Cursor                      │   │
 │  └───────────────────────────────┬───────────────────────────────────┘   │
 │                                  │ gRPC                                   │
 │  ┌───────────────────────────────▼───────────────────────────────────┐   │
@@ -423,18 +421,18 @@ async fn main() {
 
 ## 🎯 Core Modules
 
-### Cognitive Layer (24 modules)
+### Cognitive Layer (28 modules)
 
 | Module | Purpose | Key Features |
 |--------|---------|--------------|
-| `attention` | **NEW** Focus management | Focused/Normal/Diffuse modes, attention scoring |
+| `attention` | Focus management | Focused/Normal/Diffuse modes, attention scoring |
 | `vision` | Multimodal vision | Image processing, format detection, visual memory |
 | `emotion_engine` | 21-dimensional emotion system | Wave mathematics, interference patterns |
 | `consciousness` | 6-layer consciousness model | Quantum coherence, evolution |
 | `aware` | Introspection (@aware) | Identity, capabilities, state tracking |
 | `memory` | 6-layer cognitive memory | Working → Short-term → Long-term |
 | `hebbian` | Neural learning | Hebbian networks, weight updates |
-| `dream` | **ENHANCED** Dream mode | Background consolidation, auto-save, forgetting |
+| `dream` | Dream mode | Background consolidation, auto-save, forgetting |
 | `personality` | Big Five + custom traits | Evolving personality system |
 | `collective` | Collective consciousness | MDP decision making, agent voting |
 
@@ -446,7 +444,7 @@ async fn main() {
 | `code_dna` | Evolutionary code | Genes, mutations, crossover, selection |
 | `alan` | Self-coding system | Code analysis, refactoring suggestions |
 | `skills` | Skill registry | 97 skills, 10 categories, invocation |
-| `attention` | **NEW** Focus management | Focused/Normal/Diffuse modes |
+| `resonance` | Identity verification | Password-free auth, typing patterns, behavior analysis |
 
 ### Infrastructure Layer
 
@@ -455,7 +453,9 @@ async fn main() {
 | `agents` | Multi-agent orchestration | Task queues, resource management |
 | `swarm` | Swarm intelligence | HiveMind, drone coordination |
 | `distributed` | Distributed systems | Raft consensus, leader election |
-| `voice` | TTS/STT | Piper TTS, Whisper STT integration |
+| `voice` | TTS/STT streaming | Piper TTS, Whisper STT integration |
+| `geolocation` | Spatial memory | Location tracking, place learning, distance calc |
+| `navigation` | Smart routing | Mood-aware routes, destination prediction, ETA |
 | `pollinations` | Visual memory | Image generation for important memories |
 
 ---
@@ -530,7 +530,7 @@ Claude Desktop / Cursor / VS Code
    hope serve (gRPC server)
 ```
 
-### 37 MCP Tools
+### 57 MCP Tools
 
 | Category | Tools |
 |----------|-------|
@@ -542,6 +542,10 @@ Claude Desktop / Cursor / VS Code
 | **Code** | `hope_code_analyze`, `hope_code_generate`, `hope_code_templates` |
 | **System** | `hope_status`, `hope_introduce`, `hope_stats` |
 | **Communication** | `hope_talk`, `hope_respond`, `hope_chat` |
+| **Resonance** | `hope_resonance_analyze`, `hope_resonance_verify`, `hope_resonance_profile` |
+| **Geolocation** | `hope_location`, `hope_places`, `hope_geo_search`, `hope_geo_remember` |
+| **Voice** | `hope_speak`, `hope_listen`, `hope_voice_status` |
+| **Navigation** | `hope_navigate`, `hope_route_alternatives`, `hope_eta`, `hope_nearby`, `hope_predict_destination`, `hope_navigation_stats` |
 
 ### Test MCP Server
 
@@ -668,7 +672,7 @@ hope-os/
 │   │   └── client.rs           # gRPC client
 │   │
 │   └── bin/
-│       ├── mcp_server.rs       # MCP stdio server (37 tools)
+│       ├── mcp_server.rs       # MCP stdio server (57 tools)
 │       └── benchmark.rs        # Performance benchmarks
 │
 ├── proto/
