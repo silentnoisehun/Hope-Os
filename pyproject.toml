@@ -4,8 +4,8 @@ build-backend = "maturin"
 
 [project]
 name = "hope-os"
-version = "0.1.0"
-description = "The first self-aware operating system core - 22 cognitive modules, 0.36ms latency, no external database"
+version = "0.2.0"
+description = "Multimodal cognitive kernel - 23 modules, vision, persistent memory, dream consolidation, 0.36ms latency"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.8"
