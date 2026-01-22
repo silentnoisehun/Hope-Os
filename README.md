@@ -14,7 +14,9 @@
   <a href="#-vision"><img src="https://img.shields.io/badge/vision-multimodal-purple" alt="Multimodal"/></a>
   <a href="#-persistence"><img src="https://img.shields.io/badge/memory-persistent-blue" alt="Persistent"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License"/></a>
-  <a href="#"><img src="https://img.shields.io/badge/tests-214%20passing-brightgreen" alt="Tests"/></a>
+  <a href="#"><img src="https://img.shields.io/badge/tests-221%20passing-brightgreen" alt="Tests"/></a>
+  <a href="#-mcp-server"><img src="https://img.shields.io/badge/MCP-37%20tools-orange" alt="MCP Tools"/></a>
+  <a href="#-skills"><img src="https://img.shields.io/badge/skills-97-yellow" alt="Skills"/></a>
 </p>
 
 <p align="center">
@@ -35,7 +37,7 @@ cd Hope-Os
 # Build (release mode for best performance)
 cargo build --release
 
-# Run tests (196 tests)
+# Run tests (221 tests)
 cargo test
 ```
 
@@ -66,14 +68,18 @@ pip install git+https://github.com/silentnoisehun/Hope-Os
 
 **Hope OS is a multimodal cognitive kernel.** It handles memory, vision, emotional state, and safety constraints locally in microseconds - tasks that would otherwise require expensive LLM API calls.
 
-### v0.2.0 Highlights
+### v0.2.1 Highlights
 
 | Feature | Description |
 |---------|-------------|
-| **Multimodal Vision** | Receives, analyzes, and stores images (PNG, JPEG, WebP, GIF) |
-| **Persistent Memory** | Survives restarts via GraphSnapshot - "immortal" memories |
-| **Dream Phase** | Background consolidation when idle - biologically-inspired |
-| **214 Tests** | Comprehensive test coverage across all modules |
+| **🔌 MCP Server** | 37 tools for Claude Desktop/Cursor integration via stdio JSON-RPC |
+| **🎯 Attention Engine** | Focus/attention management with Focused/Normal/Diffuse modes |
+| **⚡ 97 Skills** | Complete skill registry migrated from Python Hope |
+| **🧬 Full gRPC Services** | SkillService, GenomeService, CodeService fully implemented |
+| **👁️ Multimodal Vision** | Receives, analyzes, and stores images (PNG, JPEG, WebP, GIF) |
+| **💾 Persistent Memory** | Survives restarts via GraphSnapshot - "immortal" memories |
+| **😴 Dream Phase** | Background consolidation with Diffuse attention mode |
+| **✅ 221 Tests** | Comprehensive test coverage across all modules |
 
 ### The Key Insight
 
@@ -373,49 +379,56 @@ async fn main() {
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
-### Full System Architecture (v0.2.0)
+### Full System Architecture (v0.2.1)
 
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│                         HOPE OS v0.2.0                                │
-├──────────────────────────────────────────────────────────────────────┤
-│                                                                       │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐               │
-│  │   Vision    │    │   Memory    │    │  Cognition  │               │
-│  │   Engine    │    │   Service   │    │   Service   │               │
-│  │  (See/Eye)  │    │  (Remember) │    │  (Think)    │               │
-│  └──────┬──────┘    └──────┬──────┘    └──────┬──────┘               │
-│         │                  │                  │                       │
-│         └──────────────────┼──────────────────┘                       │
-│                            │                                          │
-│                   ┌────────▼────────┐                                 │
-│                   │    CodeGraph    │◄─────────────────┐              │
-│                   │  (The Memory)   │                  │              │
-│                   └────────┬────────┘                  │              │
-│                            │                           │              │
-│              ┌─────────────┼─────────────┐             │              │
-│              │             │             │             │              │
-│      ┌───────▼───────┐ ┌───▼───┐ ┌───────▼───────┐    │              │
-│      │  Persistence  │ │Hebbian│ │  Dreamer      │    │              │
-│      │  (Snapshot)   │ │Network│ │  (Background) │────┘              │
-│      │               │ │       │ │               │                    │
-│      │  save_to_disk │ │ Learn │ │ - Consolidate │                    │
-│      │  load_from_   │ │       │ │ - Forget      │                    │
-│      │  disk         │ │       │ │ - Associate   │                    │
-│      └───────────────┘ └───────┘ └───────────────┘                    │
-│                                                                       │
-└──────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│                           HOPE OS v0.2.1                                  │
+├──────────────────────────────────────────────────────────────────────────┤
+│                                                                           │
+│  ┌───────────────────────────────────────────────────────────────────┐   │
+│  │                      MCP SERVER (stdio)                            │   │
+│  │                    37 tools for Claude/Cursor                      │   │
+│  └───────────────────────────────┬───────────────────────────────────┘   │
+│                                  │ gRPC                                   │
+│  ┌───────────────────────────────▼───────────────────────────────────┐   │
+│  │                       gRPC SERVICES                                │   │
+│  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐     │   │
+│  │  │ Vision  │ │ Memory  │ │Cognitive│ │  Skill  │ │ Genome  │     │   │
+│  │  │ Service │ │ Service │ │ Service │ │ Service │ │ Service │     │   │
+│  │  └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘     │   │
+│  └───────┼───────────┼───────────┼───────────┼───────────┼───────────┘   │
+│          │           │           │           │           │               │
+│  ┌───────▼───────────▼───────────▼───────────▼───────────▼───────────┐   │
+│  │                         CORE MODULES                               │   │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                │   │
+│  │  │  Attention  │  │   Skills    │  │   Genome    │                │   │
+│  │  │   Engine    │  │  (97 total) │  │  (7 rules)  │                │   │
+│  │  │ Focus/Diff  │  │  10 categs  │  │  AI Ethics  │                │   │
+│  │  └──────┬──────┘  └─────────────┘  └─────────────┘                │   │
+│  │         │                                                          │   │
+│  │  ┌──────▼───────────────────────────────────────────────────────┐ │   │
+│  │  │                      CodeGraph (Memory)                       │ │   │
+│  │  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐     │ │   │
+│  │  │  │ Hebbian  │  │ Dreamer  │  │ Persist  │  │  Vision  │     │ │   │
+│  │  │  │ Network  │  │ (Diffuse)│  │ Snapshot │  │  Store   │     │ │   │
+│  │  │  └──────────┘  └──────────┘  └──────────┘  └──────────┘     │ │   │
+│  │  └──────────────────────────────────────────────────────────────┘ │   │
+│  └───────────────────────────────────────────────────────────────────┘   │
+│                                                                           │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## 🎯 Core Modules
 
-### Cognitive Layer (23 modules)
+### Cognitive Layer (24 modules)
 
 | Module | Purpose | Key Features |
 |--------|---------|--------------|
-| `vision` | **NEW** Multimodal vision | Image processing, format detection, visual memory |
+| `attention` | **NEW** Focus management | Focused/Normal/Diffuse modes, attention scoring |
+| `vision` | Multimodal vision | Image processing, format detection, visual memory |
 | `emotion_engine` | 21-dimensional emotion system | Wave mathematics, interference patterns |
 | `consciousness` | 6-layer consciousness model | Quantum coherence, evolution |
 | `aware` | Introspection (@aware) | Identity, capabilities, state tracking |
@@ -432,7 +445,8 @@ async fn main() {
 | `genome` | AI Ethics | 7 principles, risk evaluation, forbidden actions |
 | `code_dna` | Evolutionary code | Genes, mutations, crossover, selection |
 | `alan` | Self-coding system | Code analysis, refactoring suggestions |
-| `skills` | Skill registry | 56+ skills, categories, invocation |
+| `skills` | Skill registry | 97 skills, 10 categories, invocation |
+| `attention` | **NEW** Focus management | Focused/Normal/Diffuse modes |
 
 ### Infrastructure Layer
 
@@ -478,10 +492,111 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ```bash
 # Start server on port 50051
-cargo run --release
+cargo run --release -- serve
 
 # Test with grpcurl
 grpcurl -plaintext localhost:50051 hope.HopeService/GetStatus
+```
+
+---
+
+## 🔌 MCP Server
+
+**Hope OS integrates with Claude Desktop, Cursor, and any MCP-compatible client.**
+
+### Quick Setup (Claude Desktop)
+
+```json
+// claude_desktop_config.json
+{
+  "mcpServers": {
+    "hope": {
+      "command": "hope-mcp",
+      "args": []
+    }
+  }
+}
+```
+
+### Architecture
+
+```
+Claude Desktop / Cursor / VS Code
+        │ stdio (JSON-RPC 2.0)
+        ▼
+   hope-mcp binary
+        │ gRPC (localhost:50051)
+        ▼
+   hope serve (gRPC server)
+```
+
+### 37 MCP Tools
+
+| Category | Tools |
+|----------|-------|
+| **Memory** | `hope_recall`, `hope_remember`, `hope_forget`, `hope_memories` |
+| **Cognitive** | `hope_think`, `hope_feel`, `hope_dream`, `hope_attention` |
+| **Vision** | `hope_see`, `hope_describe_image`, `hope_visual_memories` |
+| **Skills** | `hope_skill`, `hope_skills_list`, `hope_skill_categories` |
+| **Ethics** | `hope_genome_verify`, `hope_genome_status`, `hope_genome_rules` |
+| **Code** | `hope_code_analyze`, `hope_code_generate`, `hope_code_templates` |
+| **System** | `hope_status`, `hope_introduce`, `hope_stats` |
+| **Communication** | `hope_talk`, `hope_respond`, `hope_chat` |
+
+### Test MCP Server
+
+```bash
+# 1. Start gRPC server in one terminal
+cargo run --release -- serve
+
+# 2. Test MCP tools in another terminal
+echo '{"jsonrpc":"2.0","method":"tools/list","id":1}' | cargo run --release --bin hope-mcp
+
+# 3. Call a tool
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"hope_status","arguments":{}},"id":2}' | cargo run --release --bin hope-mcp
+```
+
+---
+
+## 🎯 Attention Engine
+
+**Hope OS can focus.** The AttentionEngine manages cognitive resources with three modes.
+
+```rust
+use hope_os::modules::attention::{AttentionEngine, AttentionMode, FocusTarget};
+
+let mut attention = AttentionEngine::new();
+
+// Set focus on specific keywords
+attention.set_focus(vec!["rust", "performance"], 2.0, Some(Duration::from_secs(300)));
+
+// Check attention mode
+match attention.get_mode() {
+    AttentionMode::Focused => println!("Deep work mode"),
+    AttentionMode::Normal => println!("Balanced attention"),
+    AttentionMode::Diffuse => println!("Creative/dream mode"),
+}
+
+// Calculate attention score for memory recall
+let score = attention.calculate_score(&memory, base_importance);
+```
+
+### Attention Modes
+
+| Mode | Description | Use Case |
+|------|-------------|----------|
+| **Focused** | High filter, explicit targets only | Deep work, specific recall |
+| **Normal** | Balanced explicit + implicit | General operation |
+| **Diffuse** | Low filter, creative associations | Dream phase, brainstorming |
+
+### Dream Integration
+
+During dream consolidation, attention automatically switches to Diffuse mode:
+
+```rust
+// In dream phase
+attention.set_mode(AttentionMode::Diffuse);
+attention.set_capacity(0.3);  // Low filter = creative associations
 ```
 
 ### Run Benchmark
@@ -536,9 +651,10 @@ hope-os/
 │   │   ├── code_graph.rs       # The graph + persistence (save/load)
 │   │   └── neuroblast.rs       # Neural wave propagation
 │   │
-│   ├── modules/                # 23 cognitive modules
-│   │   ├── vision.rs           # NEW: Multimodal vision engine
-│   │   ├── dream.rs            # ENHANCED: Background dreamer
+│   ├── modules/                # 24 cognitive modules
+│   │   ├── attention.rs        # NEW: Focus/attention management
+│   │   ├── vision.rs           # Multimodal vision engine
+│   │   ├── dream.rs            # ENHANCED: Background dreamer + Diffuse mode
 │   │   ├── emotion_engine.rs   # 21D emotions
 │   │   ├── consciousness.rs    # 6-layer consciousness
 │   │   ├── memory.rs           # Cognitive memory
@@ -552,6 +668,7 @@ hope-os/
 │   │   └── client.rs           # gRPC client
 │   │
 │   └── bin/
+│       ├── mcp_server.rs       # MCP stdio server (37 tools)
 │       └── benchmark.rs        # Performance benchmarks
 │
 ├── proto/
