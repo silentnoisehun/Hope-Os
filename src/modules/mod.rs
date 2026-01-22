@@ -113,9 +113,7 @@ pub use pollinations::{
 };
 
 // Vision - Képfeldolgozás (INPUT) - Hope "szeme"
-pub use vision::{
-    ImageFormat, ImageMetadata, ImageSize, VisionEngine, VisionStats, VisualInput,
-};
+pub use vision::{ImageFormat, ImageMetadata, ImageSize, VisionEngine, VisionStats, VisualInput};
 
 // Context Builder - Kontextus kezelés
 pub use context_builder::{

@@ -923,8 +923,7 @@ impl CodeGraph {
         let json = serde_json::to_string_pretty(&snapshot)
             .map_err(|e| format!("JSON szerializálás hiba: {}", e))?;
 
-        std::fs::write(path, json)
-            .map_err(|e| format!("Fájl írás hiba: {}", e))?;
+        std::fs::write(path, json).map_err(|e| format!("Fájl írás hiba: {}", e))?;
 
         tracing::info!(
             "CodeGraph mentve: {} ({} block, {} kapcsolat)",
@@ -947,11 +946,11 @@ impl CodeGraph {
     /// println!("Betöltve: {} block", graph.len());
     /// ```
     pub fn load_from_disk(path: &std::path::Path) -> HopeResult<Self> {
-        let json = std::fs::read_to_string(path)
-            .map_err(|e| format!("Fájl olvasás hiba: {}", e))?;
+        let json =
+            std::fs::read_to_string(path).map_err(|e| format!("Fájl olvasás hiba: {}", e))?;
 
-        let snapshot: GraphSnapshot = serde_json::from_str(&json)
-            .map_err(|e| format!("JSON parse hiba: {}", e))?;
+        let snapshot: GraphSnapshot =
+            serde_json::from_str(&json).map_err(|e| format!("JSON parse hiba: {}", e))?;
 
         // Verzió ellenőrzés
         if snapshot.version > GraphSnapshot::CURRENT_VERSION {

@@ -400,7 +400,9 @@ impl DreamEngine {
         // Random érzelmek
         let emotions = ["joy", "curiosity", "wonder", "peace", "nostalgia"];
         let emotion = emotions[emotion_idx];
-        dream.emotions.insert(emotion.to_string(), emotion_intensity);
+        dream
+            .emotions
+            .insert(emotion.to_string(), emotion_intensity);
 
         // Mentés
         self.dreams_tonight.write().await.push(dream.clone());
@@ -606,12 +608,12 @@ pub struct BackgroundConfig {
 impl Default for BackgroundConfig {
     fn default() -> Self {
         Self {
-            idle_threshold_secs: 300,        // 5 perc inaktivitás után alszik
-            sleep_cycle_secs: 60,            // 1 perces alvási ciklusok
-            auto_save_interval_secs: 300,    // 5 percenként ment
+            idle_threshold_secs: 300,     // 5 perc inaktivitás után alszik
+            sleep_cycle_secs: 60,         // 1 perces alvási ciklusok
+            auto_save_interval_secs: 300, // 5 percenként ment
             memory_path: PathBuf::from("hope_memory.json"),
-            forget_threshold_days: 30,       // 30 napnál régebbi emlékek felejthetők
-            min_importance_to_keep: 0.3,     // 0.3 alatti fontosság felejtődik
+            forget_threshold_days: 30, // 30 napnál régebbi emlékek felejthetők
+            min_importance_to_keep: 0.3, // 0.3 alatti fontosság felejtődik
         }
     }
 }
@@ -779,7 +781,10 @@ impl BackgroundDreamer {
 
             if idle_time >= config.idle_threshold_secs as f64 && !engine.is_dreaming().await {
                 // Elalszunk
-                tracing::info!("😴 Inaktivitás detektálva ({:.0}s) - alvás indul", idle_time);
+                tracing::info!(
+                    "😴 Inaktivitás detektálva ({:.0}s) - alvás indul",
+                    idle_time
+                );
                 let _ = engine.start_sleep().await;
             }
 
@@ -904,7 +909,8 @@ impl BackgroundDreamer {
                 // Ha van közös szó, kapcsolat létrehozása
                 let common: Vec<_> = thought_words.intersection(&concept_words).collect();
                 if !common.is_empty() {
-                    let strength = (common.len() as f64 / thought_words.len().max(1) as f64).min(1.0);
+                    let strength =
+                        (common.len() as f64 / thought_words.len().max(1) as f64).min(1.0);
                     if strength >= 0.2 {
                         graph.connect(
                             &thought.id,
@@ -1088,8 +1094,10 @@ mod tests {
         use crate::data::CodeGraph;
 
         let graph = Arc::new(CodeGraph::new());
-        let mut config = BackgroundConfig::default();
-        config.sleep_cycle_secs = 1; // Gyors ciklus a teszthez
+        let config = BackgroundConfig {
+            sleep_cycle_secs: 1, // Gyors ciklus a teszthez
+            ..Default::default()
+        };
 
         let mut dreamer = BackgroundDreamer::new(graph, config);
 

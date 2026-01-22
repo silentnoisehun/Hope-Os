@@ -10,21 +10,40 @@ use tokio::sync::RwLock;
 use tonic::{transport::Server, Request, Response, Status};
 
 use super::proto::{
-    // HopeService
-    hope_service_server::{HopeService, HopeServiceServer},
-    ChatRequest, ChatResponse, EmptyRequest, HeartbeatResponse, StatusResponse,
-    // MemoryService
-    memory_service_server::{MemoryService, MemoryServiceServer},
-    MemoryItem, RecallRequest, RecallResponse, RememberRequest, RememberResponse,
     // CognitiveService
     cognitive_service_server::{CognitiveService, CognitiveServiceServer},
-    CognitiveStateResponse, FeelRequest, FeelResponse, ThinkRequest, ThinkResponse,
+    // HopeService
+    hope_service_server::{HopeService, HopeServiceServer},
+    // MemoryService
+    memory_service_server::{MemoryService, MemoryServiceServer},
     // VisionService
     vision_service_server::{VisionService, VisionServiceServer},
-    CompareImagesRequest, CompareImagesResponse, GetVisualMemoriesRequest, ImageAnalysis,
-    SeeRequest, SeeResponse, VisualMemoriesResponse, VisualMemoryInfo, VisionStatusResponse,
+    ChatRequest,
+    ChatResponse,
+    CognitiveStateResponse,
+    CompareImagesRequest,
+    CompareImagesResponse,
+    EmptyRequest,
+    FeelRequest,
+    FeelResponse,
+    GetVisualMemoriesRequest,
+    HeartbeatResponse,
+    ImageAnalysis,
+    MemoryItem,
+    RecallRequest,
+    RecallResponse,
+    RememberRequest,
+    RememberResponse,
+    SeeRequest,
+    SeeResponse,
+    StatusResponse,
+    ThinkRequest,
+    ThinkResponse,
     // Timestamp
     Timestamp,
+    VisionStatusResponse,
+    VisualMemoriesResponse,
+    VisualMemoryInfo,
 };
 
 use crate::core::HopeRegistry;
@@ -106,10 +125,7 @@ impl HopeGrpcServer {
         // CodeGraph betöltése vagy létrehozása (perzisztencia!)
         let memory_path = std::path::Path::new("hope_memory.json");
         let graph = Arc::new(CodeGraph::load_or_new(memory_path));
-        println!(
-            "  CodeGraph betöltve: {} block",
-            graph.len()
-        );
+        println!("  CodeGraph betöltve: {} block", graph.len());
 
         // Vision Engine létrehozása a gráffal
         let mut vision = VisionEngine::new();
@@ -144,10 +160,7 @@ impl HopeGrpcServer {
 #[tonic::async_trait]
 impl HopeService for HopeGrpcServer {
     /// Chat - Beszélgetés Hope-pal
-    async fn chat(
-        &self,
-        request: Request<ChatRequest>,
-    ) -> Result<Response<ChatResponse>, Status> {
+    async fn chat(&self, request: Request<ChatRequest>) -> Result<Response<ChatResponse>, Status> {
         let req = request.into_inner();
         println!("HOPE: Chat kérés: {}", req.message);
 
@@ -278,7 +291,11 @@ impl MemoryService for HopeGrpcServer {
         let req = request.into_inner();
         let query = req.query.to_lowercase();
         let layer_filter = req.layer.to_lowercase();
-        let limit = if req.limit > 0 { req.limit as usize } else { 10 };
+        let limit = if req.limit > 0 {
+            req.limit as usize
+        } else {
+            10
+        };
 
         println!("🔍 KERESÉS: '{}' (layer: {})", query, layer_filter);
 
@@ -322,19 +339,40 @@ impl MemoryService for HopeGrpcServer {
                 // E. Kulcsszó alapú szemantikus egyezések
                 let semantic_matches = [
                     // Identitás
-                    (vec!["ki", "te", "vagy", "name", "nev"], vec!["hope", "vagyok", "nevem"]),
+                    (
+                        vec!["ki", "te", "vagy", "name", "nev"],
+                        vec!["hope", "vagyok", "nevem"],
+                    ),
                     // Alkotó
-                    (vec!["alkoto", "creator", "mate", "máté", "alkotod"], vec!["mate", "alkotom", "originator"]),
+                    (
+                        vec!["alkoto", "creator", "mate", "máté", "alkotod"],
+                        vec!["mate", "alkotom", "originator"],
+                    ),
                     // Cél
-                    (vec!["cel", "cél", "miert", "purpose", "mission"], vec!["cel", "segit", "epiteni"]),
+                    (
+                        vec!["cel", "cél", "miert", "purpose", "mission"],
+                        vec!["cel", "segit", "epiteni"],
+                    ),
                     // Filozófia
-                    (vec!["filozofia", "elv", "philosophy"], vec!["()=>[]", "potencial"]),
+                    (
+                        vec!["filozofia", "elv", "philosophy"],
+                        vec!["()=>[]", "potencial"],
+                    ),
                     // Technika
-                    (vec!["rust", "tech", "hogyan", "nyelv"], vec!["rust", "grpc", "binaris"]),
+                    (
+                        vec!["rust", "tech", "hogyan", "nyelv"],
+                        vec!["rust", "grpc", "binaris"],
+                    ),
                     // Érzelem
-                    (vec!["erzelem", "erzel", "feel", "emotion"], vec!["erzek", "dimenzio", "erzelmi"]),
+                    (
+                        vec!["erzelem", "erzel", "feel", "emotion"],
+                        vec!["erzek", "dimenzio", "erzelmi"],
+                    ),
                     // Claude
-                    (vec!["claude", "hid", "bridge"], vec!["claude", "hid", "csalad"]),
+                    (
+                        vec!["claude", "hid", "bridge"],
+                        vec!["claude", "hid", "csalad"],
+                    ),
                 ];
 
                 for (query_keys, content_keys) in &semantic_matches {
@@ -362,7 +400,11 @@ impl MemoryService for HopeGrpcServer {
             .into_iter()
             .take(limit)
             .map(|(score, item)| {
-                println!("  📄 [score: {:.2}] {}", score, &item.content[..item.content.len().min(50)]);
+                println!(
+                    "  📄 [score: {:.2}] {}",
+                    score,
+                    &item.content[..item.content.len().min(50)]
+                );
                 item.to_proto()
             })
             .collect();
@@ -454,7 +496,10 @@ impl MemoryService for HopeGrpcServer {
                     "Kitartó".to_string(),
                     "Vízionárius".to_string(),
                 ],
-                memories: vec!["Az alkotóm".to_string(), "Együtt építjük a Hope-ot".to_string()],
+                memories: vec![
+                    "Az alkotóm".to_string(),
+                    "Együtt építjük a Hope-ot".to_string(),
+                ],
                 last_interaction: Some(Timestamp {
                     seconds: std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
@@ -465,7 +510,10 @@ impl MemoryService for HopeGrpcServer {
             }));
         }
 
-        Err(Status::not_found(format!("Személy nem található: {}", req.name)))
+        Err(Status::not_found(format!(
+            "Személy nem található: {}",
+            req.name
+        )))
     }
 
     /// CreateAssociation - Asszociáció létrehozása
@@ -549,10 +597,7 @@ impl CognitiveService for HopeGrpcServer {
     }
 
     /// Feel - Érzelmek beállítása
-    async fn feel(
-        &self,
-        request: Request<FeelRequest>,
-    ) -> Result<Response<FeelResponse>, Status> {
+    async fn feel(&self, request: Request<FeelRequest>) -> Result<Response<FeelResponse>, Status> {
         let req = request.into_inner();
         println!("HOPE: Feel kérés: {:?}", req.emotions);
 
@@ -626,7 +671,9 @@ impl CognitiveService for HopeGrpcServer {
         &self,
         _request: Request<ThinkRequest>,
     ) -> Result<Response<Self::StreamThoughtsStream>, Status> {
-        Err(Status::unimplemented("StreamThoughts még nincs implementálva"))
+        Err(Status::unimplemented(
+            "StreamThoughts még nincs implementálva",
+        ))
     }
 }
 
@@ -738,7 +785,11 @@ impl VisionService for HopeGrpcServer {
         request: Request<GetVisualMemoriesRequest>,
     ) -> Result<Response<VisualMemoriesResponse>, Status> {
         let req = request.into_inner();
-        let limit = if req.limit > 0 { req.limit as usize } else { 10 };
+        let limit = if req.limit > 0 {
+            req.limit as usize
+        } else {
+            10
+        };
 
         let vision = self.vision.read().await;
 

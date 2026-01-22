@@ -39,7 +39,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Remember teszt
     println!("5. Remember teszt...");
-    let remember = client.remember("A Hope OS Rust szervere él!", "long_term").await?;
+    let remember = client
+        .remember("A Hope OS Rust szervere él!", "long_term")
+        .await?;
     println!("   ✅ Emlék mentve: {}\n", remember.id);
 
     // Think teszt

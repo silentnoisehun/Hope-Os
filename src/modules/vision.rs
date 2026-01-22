@@ -389,8 +389,7 @@ impl VisionEngine {
         // Átlag megapixel frissítése
         let mp = input.metadata.size.megapixels();
         let n = self.stats.total_received as f64;
-        self.stats.avg_megapixels =
-            (self.stats.avg_megapixels * (n - 1.0) + mp) / n;
+        self.stats.avg_megapixels = (self.stats.avg_megapixels * (n - 1.0) + mp) / n;
     }
 
     /// Tárolás CodeGraph-ban
@@ -420,8 +419,8 @@ impl VisionEngine {
             .with_tag("visual")
             .with_tag(input.metadata.format.extension())
             .with_meta("image_hash", &input.metadata.hash)
-            .with_meta("width", &input.metadata.size.width.to_string())
-            .with_meta("height", &input.metadata.size.height.to_string());
+            .with_meta("width", input.metadata.size.width.to_string())
+            .with_meta("height", input.metadata.size.height.to_string());
 
             let block_id = graph.add(block)?;
 
@@ -430,12 +429,7 @@ impl VisionEngine {
                 // Keresés a gráfban hasonló tartalomra
                 let related = graph.search(context);
                 for rel in related.iter().take(3) {
-                    graph.connect(
-                        &block_id,
-                        &rel.id,
-                        ConnectionType::AssociatesWith,
-                        0.7,
-                    );
+                    graph.connect(&block_id, &rel.id, ConnectionType::AssociatesWith, 0.7);
                 }
             }
 
@@ -529,16 +523,23 @@ impl VisionEngine {
 
 /// Base64 kódolás
 fn base64_encode(data: &[u8]) -> String {
-    const ALPHABET: &[u8; 64] =
-        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
     let mut result = String::new();
     let mut i = 0;
 
     while i < data.len() {
         let b0 = data[i] as u32;
-        let b1 = if i + 1 < data.len() { data[i + 1] as u32 } else { 0 };
-        let b2 = if i + 2 < data.len() { data[i + 2] as u32 } else { 0 };
+        let b1 = if i + 1 < data.len() {
+            data[i + 1] as u32
+        } else {
+            0
+        };
+        let b2 = if i + 2 < data.len() {
+            data[i + 2] as u32
+        } else {
+            0
+        };
 
         let triple = (b0 << 16) | (b1 << 8) | b2;
 
