@@ -16,8 +16,9 @@ use proto::{
     cognitive_service_client::CognitiveServiceClient, echo_service_client::EchoServiceClient,
     genome_service_client::GenomeServiceClient, geo_service_client::GeoServiceClient,
     hope_service_client::HopeServiceClient, knowledge_service_client::KnowledgeServiceClient,
-    memory_service_client::MemoryServiceClient, resonance_service_client::ResonanceServiceClient,
-    skill_service_client::SkillServiceClient, vision_service_client::VisionServiceClient, *,
+    memory_service_client::MemoryServiceClient, navigation_service_client::NavigationServiceClient,
+    resonance_service_client::ResonanceServiceClient, skill_service_client::SkillServiceClient,
+    vision_service_client::VisionServiceClient, voice_service_client::VoiceServiceClient, *,
 };
 
 /// Hope gRPC Client
@@ -48,6 +49,10 @@ pub struct HopeClient {
     pub resonance: ResonanceServiceClient<Channel>,
     /// Geo szolgáltatás (térbeli kontextus)
     pub geo: GeoServiceClient<Channel>,
+    /// Voice szolgáltatás (TTS/STT)
+    pub voice: VoiceServiceClient<Channel>,
+    /// Navigation szolgáltatás (intelligens útvonaltervezés)
+    pub navigation: NavigationServiceClient<Channel>,
     /// Szerver cím
     address: String,
 }
@@ -73,6 +78,8 @@ impl HopeClient {
             vision: VisionServiceClient::new(channel.clone()),
             resonance: ResonanceServiceClient::new(channel.clone()),
             geo: GeoServiceClient::new(channel.clone()),
+            voice: VoiceServiceClient::new(channel.clone()),
+            navigation: NavigationServiceClient::new(channel.clone()),
             address: address.to_string(),
         })
     }
@@ -599,6 +606,328 @@ impl HopeClient {
     /// Geo statisztikák
     pub async fn geo_stats(&mut self) -> HopeResult<GeoStatsResponse> {
         let response = self.geo.get_geo_stats(EmptyRequest {}).await?;
+        Ok(response.into_inner())
+    }
+
+    // ==================== VOICE SERVICE ====================
+
+    /// TTS - Szöveg felolvasása (sync verzió, teljes audio visszaadás)
+    pub async fn speak(&mut self, text: &str, voice: &str) -> HopeResult<SpeakResponse> {
+        let request = SpeakRequest {
+            text: text.to_string(),
+            voice: voice.to_string(),
+            emotion: String::new(),
+            emotions_21d: HashMap::new(),
+            settings: None,
+        };
+
+        let response = self.voice.speak_sync(request).await?;
+        Ok(response.into_inner())
+    }
+
+    /// TTS - Szöveg felolvasása érzelemmel
+    pub async fn speak_with_emotion(
+        &mut self,
+        text: &str,
+        voice: &str,
+        emotion: &str,
+        emotions_21d: HashMap<String, f64>,
+    ) -> HopeResult<SpeakResponse> {
+        let request = SpeakRequest {
+            text: text.to_string(),
+            voice: voice.to_string(),
+            emotion: emotion.to_string(),
+            emotions_21d,
+            settings: None,
+        };
+
+        let response = self.voice.speak_sync(request).await?;
+        Ok(response.into_inner())
+    }
+
+    /// Elérhető hangok listázása
+    pub async fn get_voices(&mut self) -> HopeResult<VoicesResponse> {
+        let response = self.voice.get_voices(EmptyRequest {}).await?;
+        Ok(response.into_inner())
+    }
+
+    /// Hang beállítása
+    pub async fn set_voice(&mut self, voice: &str) -> HopeResult<SetVoiceResponse> {
+        let request = SetVoiceRequest {
+            voice: voice.to_string(),
+            emotion: String::new(),
+            emotions_21d: HashMap::new(),
+        };
+
+        let response = self.voice.set_voice(request).await?;
+        Ok(response.into_inner())
+    }
+
+    /// Voice státusz lekérdezése
+    pub async fn voice_status(&mut self) -> HopeResult<VoiceStatusResponse> {
+        let response = self.voice.get_voice_status(EmptyRequest {}).await?;
+        Ok(response.into_inner())
+    }
+
+    /// Hang klónozása
+    pub async fn clone_voice(
+        &mut self,
+        name: &str,
+        audio_samples: Vec<Vec<u8>>,
+    ) -> HopeResult<CloneVoiceResponse> {
+        let request = CloneVoiceRequest {
+            name: name.to_string(),
+            audio_samples,
+            base_voice: String::new(),
+        };
+
+        let response = self.voice.clone_voice(request).await?;
+        Ok(response.into_inner())
+    }
+
+    /// Klónozott hangok listázása
+    pub async fn get_voice_clones(&mut self, limit: i32) -> HopeResult<VoiceClonesResponse> {
+        let request = GetVoiceClonesRequest { limit };
+
+        let response = self.voice.get_voice_clones(request).await?;
+        Ok(response.into_inner())
+    }
+
+    /// Hang regisztrálása (Resonance integráció)
+    pub async fn register_voice(
+        &mut self,
+        user_id: &str,
+        audio_samples: Vec<Vec<u8>>,
+    ) -> HopeResult<RegisterVoiceResponse> {
+        let request = RegisterVoiceRequest {
+            user_id: user_id.to_string(),
+            audio_samples,
+        };
+
+        let response = self.voice.register_voice(request).await?;
+        Ok(response.into_inner())
+    }
+
+    /// Hang verifikáció
+    pub async fn verify_voice(
+        &mut self,
+        audio_data: &[u8],
+        user_id: Option<&str>,
+        threshold: f64,
+    ) -> HopeResult<VerifyVoiceResponse> {
+        let request = VerifyVoiceRequest {
+            audio_data: audio_data.to_vec(),
+            user_id: user_id.unwrap_or("").to_string(),
+            threshold,
+        };
+
+        let response = self.voice.verify_voice(request).await?;
+        Ok(response.into_inner())
+    }
+
+    /// Hang elemzése (signature generálás)
+    pub async fn analyze_voice(&mut self, audio_data: &[u8]) -> HopeResult<AnalyzeVoiceResponse> {
+        let request = AnalyzeVoiceRequest {
+            audio_data: audio_data.to_vec(),
+        };
+
+        let response = self.voice.analyze_voice(request).await?;
+        Ok(response.into_inner())
+    }
+
+    /// Regisztrált hang aláírások listázása
+    pub async fn get_voice_signatures(
+        &mut self,
+        user_id: Option<&str>,
+        limit: i32,
+    ) -> HopeResult<VoiceSignaturesResponse> {
+        let request = GetVoiceSignaturesRequest {
+            user_id: user_id.unwrap_or("").to_string(),
+            limit,
+        };
+
+        let response = self.voice.get_voice_signatures(request).await?;
+        Ok(response.into_inner())
+    }
+
+    // ==================== NAVIGATION SERVICE ====================
+
+    /// Útvonal tervezése
+    pub async fn plan_route(
+        &mut self,
+        origin_lat: f64,
+        origin_lon: f64,
+        dest_lat: f64,
+        dest_lon: f64,
+    ) -> HopeResult<PlanRouteResponse> {
+        let request = PlanRouteRequest {
+            origin: Some(GeoPointProto {
+                latitude: origin_lat,
+                longitude: origin_lon,
+                name: String::new(),
+                place_id: String::new(),
+            }),
+            destination: Some(GeoPointProto {
+                latitude: dest_lat,
+                longitude: dest_lon,
+                name: String::new(),
+                place_id: String::new(),
+            }),
+            waypoints: Vec::new(),
+            context: None,
+            preferences: None,
+        };
+
+        let response = self.navigation.plan_route(request).await?;
+        Ok(response.into_inner())
+    }
+
+    /// Útvonal tervezése kontextussal
+    pub async fn plan_route_with_context(
+        &mut self,
+        origin_lat: f64,
+        origin_lon: f64,
+        dest_lat: f64,
+        dest_lon: f64,
+        mood: &str,
+        energy_level: f64,
+        time_pressure: f64,
+    ) -> HopeResult<PlanRouteResponse> {
+        let request = PlanRouteRequest {
+            origin: Some(GeoPointProto {
+                latitude: origin_lat,
+                longitude: origin_lon,
+                name: String::new(),
+                place_id: String::new(),
+            }),
+            destination: Some(GeoPointProto {
+                latitude: dest_lat,
+                longitude: dest_lon,
+                name: String::new(),
+                place_id: String::new(),
+            }),
+            waypoints: Vec::new(),
+            context: Some(NavigationContextProto {
+                current_mood: mood.to_string(),
+                energy_level,
+                time_pressure,
+                purpose: String::new(),
+                emotions_21d: HashMap::new(),
+            }),
+            preferences: None,
+        };
+
+        let response = self.navigation.plan_route(request).await?;
+        Ok(response.into_inner())
+    }
+
+    /// Alternatív útvonalak
+    pub async fn get_route_alternatives(
+        &mut self,
+        origin_lat: f64,
+        origin_lon: f64,
+        dest_lat: f64,
+        dest_lon: f64,
+    ) -> HopeResult<AlternativeRoutesResponse> {
+        let request = PlanRouteRequest {
+            origin: Some(GeoPointProto {
+                latitude: origin_lat,
+                longitude: origin_lon,
+                name: String::new(),
+                place_id: String::new(),
+            }),
+            destination: Some(GeoPointProto {
+                latitude: dest_lat,
+                longitude: dest_lon,
+                name: String::new(),
+                place_id: String::new(),
+            }),
+            waypoints: Vec::new(),
+            context: None,
+            preferences: None,
+        };
+
+        let response = self.navigation.get_alternatives(request).await?;
+        Ok(response.into_inner())
+    }
+
+    /// Cél előrejelzés (Symbiosis)
+    pub async fn predict_destination(&mut self) -> HopeResult<PredictDestinationResponse> {
+        let request = PredictDestinationRequest {
+            current_location: None,
+            time: None,
+            include_reasoning: true,
+        };
+
+        let response = self.navigation.predict_destination(request).await?;
+        Ok(response.into_inner())
+    }
+
+    /// ETA számítás
+    pub async fn get_eta(&mut self, dest_lat: f64, dest_lon: f64) -> HopeResult<GetEtaResponse> {
+        let request = GetEtaRequest {
+            origin: None,
+            destination: Some(GeoPointProto {
+                latitude: dest_lat,
+                longitude: dest_lon,
+                name: String::new(),
+                place_id: String::new(),
+            }),
+            consider_traffic: true,
+        };
+
+        let response = self.navigation.get_eta(request).await?;
+        Ok(response.into_inner())
+    }
+
+    /// Közeli helyek keresése
+    pub async fn find_nearby_places(
+        &mut self,
+        category: Option<&str>,
+        radius_km: f64,
+        on_route_only: bool,
+        limit: i32,
+    ) -> HopeResult<FindNearbyResponse> {
+        let request = FindNearbyRequest {
+            location: None,
+            radius_km,
+            category: category.unwrap_or("").to_string(),
+            on_route_only,
+            limit,
+        };
+
+        let response = self.navigation.find_nearby(request).await?;
+        Ok(response.into_inner())
+    }
+
+    /// Navigációs statisztikák
+    pub async fn navigation_stats(&mut self) -> HopeResult<NavigationStatsResponse> {
+        let response = self
+            .navigation
+            .get_navigation_stats(EmptyRequest {})
+            .await?;
+        Ok(response.into_inner())
+    }
+
+    /// Indulási idő javaslat
+    pub async fn suggest_departure(
+        &mut self,
+        dest_lat: f64,
+        dest_lon: f64,
+        dest_name: &str,
+    ) -> HopeResult<SuggestDepartureResponse> {
+        let request = SuggestDepartureRequest {
+            destination: Some(GeoPointProto {
+                latitude: dest_lat,
+                longitude: dest_lon,
+                name: dest_name.to_string(),
+                place_id: String::new(),
+            }),
+            arrive_by: None,
+            consider_preparation: true,
+        };
+
+        let response = self.navigation.suggest_departure(request).await?;
         Ok(response.into_inner())
     }
 }

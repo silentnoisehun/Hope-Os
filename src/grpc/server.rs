@@ -23,39 +23,57 @@ use super::proto::{
     hope_service_server::{HopeService, HopeServiceServer},
     // MemoryService
     memory_service_server::{MemoryService, MemoryServiceServer},
+    // NavigationService
+    navigation_service_server::{NavigationService, NavigationServiceServer},
     // ResonanceService
     resonance_service_server::{ResonanceService, ResonanceServiceServer},
     // SkillService
     skill_service_server::{SkillService, SkillServiceServer},
     // VisionService
     vision_service_server::{VisionService, VisionServiceServer},
+    // VoiceService
+    voice_service_server::{VoiceService, VoiceServiceServer},
     // Geo types
     AddGeoMemoryRequest,
     AddGeoMemoryResponse,
     AddPlaceRequest,
     AddPlaceResponse,
+    // Navigation types
+    AlternativeRoutesResponse,
     // Code
     AnalyzeRequest,
     AnalyzeResponse,
+    // Voice types
+    AnalyzeVoiceRequest,
+    AnalyzeVoiceResponse,
     AttentionStateResponse,
+    AudioChunk,
     AuditEntry,
     AuditTrailResponse,
     ChatRequest,
     ChatResponse,
     ClearFocusResponse,
+    CloneVoiceRequest,
+    CloneVoiceResponse,
     CodeBlock,
     CodeIssue,
     CodeMetrics,
     CognitiveStateResponse,
     CompareImagesRequest,
     CompareImagesResponse,
+    CompletedRouteResponse,
+    ContextSuggestionProto,
+    ConversationChunk,
     // Resonance
     DetectAnomalyRequest,
     DetectAnomalyResponse,
+    EmotionAtLocationProto,
     EmptyRequest,
     EthicalRule,
     FeelRequest,
     FeelResponse,
+    FindNearbyRequest,
+    FindNearbyResponse,
     FocusTargetInfo,
     GenerateRequest,
     GenerateResponse,
@@ -65,14 +83,20 @@ use super::proto::{
     GeoLocationResponse,
     GeoMemoriesResponse,
     GeoMemoryInfo,
+    GeoPointProto,
     GeoStatsResponse,
     GetAuditTrailRequest,
     GetCodeBlockRequest,
     GetDistanceRequest,
     GetDistanceResponse,
+    GetEtaRequest,
+    GetEtaResponse,
     GetNearbyMemoriesRequest,
+    GetRouteContextRequest,
     GetSkillRequest,
     GetVisualMemoriesRequest,
+    GetVoiceClonesRequest,
+    GetVoiceSignaturesRequest,
     HeartbeatResponse,
     ImageAnalysis,
     InvokeSkillRequest,
@@ -84,13 +108,29 @@ use super::proto::{
     ListSkillsResponse,
     ListTemplatesRequest,
     ListTemplatesResponse,
+    ListenContinuousRequest,
     MemoryItem,
+    MemoryOnRouteProto,
+    NavigationContextProto,
+    NavigationStatsResponse,
+    NavigationUpdateResponse,
+    NearbyEventProto,
     PlaceInfo,
+    PlaceOnRouteProto,
     PlaceResponse,
+    PlaceWithContextProto,
+    PlanRouteRequest,
+    PlanRouteResponse,
+    PositionUpdate,
+    PredictDestinationRequest,
+    PredictDestinationResponse,
+    PredictedDestinationProto,
     RecallRequest,
     RecallResponse,
     RegisterUserRequest,
     RegisterUserResponse,
+    RegisterVoiceRequest,
+    RegisterVoiceResponse,
     RememberRequest,
     RememberResponse,
     ResonanceInput,
@@ -99,6 +139,9 @@ use super::proto::{
     ResonanceStatusResponse,
     ResonanceVerifyRequest,
     ResonanceVerifyResponse,
+    RouteContextResponse,
+    RoutePreferencesProto,
+    RouteSegmentProto,
     RulesResponse,
     SeeRequest,
     SeeResponse,
@@ -109,30 +152,53 @@ use super::proto::{
     SetHomeResponse,
     SetLocationRequest,
     SetLocationResponse,
+    SetVoiceRequest,
+    SetVoiceResponse,
     SignDecisionRequest,
     SignDecisionResponse,
     SkillInfo,
     SkillOutput,
+    SmartRouteProto,
+    SpeakRequest,
+    SpeakResponse,
+    StartNavigationRequest,
+    StartNavigationResponse,
     StatusResponse,
+    StopNavigationRequest,
     StoreCodeBlockRequest,
     StoreCodeBlockResponse,
+    SuggestDepartureRequest,
+    SuggestDepartureResponse,
+    SuggestedStopProto,
     TemplateInfo,
     ThinkRequest,
     ThinkResponse,
     // Timestamp
     Timestamp,
+    TranscriptionChunk,
+    TranscriptionResponse,
     VerifyActionRequest,
     VerifyActionResponse,
+    VerifyVoiceRequest,
+    VerifyVoiceResponse,
     VisionStatusResponse,
     VisualMemoriesResponse,
     VisualMemoryInfo,
+    VoiceClonesResponse,
+    VoiceInfo,
+    VoiceSignaturesResponse,
+    VoiceStatusResponse,
+    VoicesResponse,
+    WordInfo,
 };
 
 use crate::core::HopeRegistry;
 use crate::data::CodeGraph;
 use crate::modules::attention::{AttentionEngine, AttentionMode};
 use crate::modules::geolocation::{GeoEngine, GeoLocation, GeoSource, Place, PlaceType};
+use crate::modules::navigation::NavigationEngine;
 use crate::modules::resonance::{ResonanceEngine, SessionData, UserInput};
+use crate::modules::voice::HopeVoice;
 use crate::modules::{HopeGenome, HopeHeart, HopeMemory, HopeSoul, SkillRegistry, VisionEngine};
 
 // ============================================================================
@@ -217,6 +283,10 @@ pub struct HopeGrpcServer {
     resonance: Arc<ResonanceEngine>,
     /// Geo Engine - Térbeli kontextus
     geo: Arc<GeoEngine>,
+    /// Voice Engine - TTS/STT hang rendszer
+    voice: Arc<RwLock<HopeVoice>>,
+    /// Navigation Engine - Intelligens útvonaltervezés
+    navigation: Arc<NavigationEngine>,
 }
 
 impl HopeGrpcServer {
@@ -259,8 +329,16 @@ impl HopeGrpcServer {
         println!("  ResonanceEngine: rezonancia autentikáció aktív");
 
         // Geo Engine létrehozása (térbeli kontextus)
-        let geo = GeoEngine::new();
+        let geo = Arc::new(GeoEngine::new());
         println!("  GeoEngine: térbeli kontextus aktív");
+
+        // Voice Engine létrehozása (TTS/STT hang rendszer)
+        let voice = HopeVoice::new();
+        println!("  VoiceEngine: TTS/STT hang rendszer aktív");
+
+        // Navigation Engine létrehozása (intelligens útvonaltervezés)
+        let navigation = NavigationEngine::new(geo.clone());
+        println!("  NavigationEngine: intelligens útvonaltervezés aktív");
 
         // Alapértelmezett érzelmek
         let mut emotions = HashMap::new();
@@ -280,7 +358,9 @@ impl HopeGrpcServer {
             genome: Arc::new(RwLock::new(genome)),
             code_blocks: Arc::new(RwLock::new(Vec::new())),
             resonance: Arc::new(resonance),
-            geo: Arc::new(geo),
+            geo,
+            voice: Arc::new(RwLock::new(voice)),
+            navigation: Arc::new(navigation),
         })
     }
 
@@ -2391,6 +2471,1307 @@ impl GeoService for HopeGrpcServer {
 }
 
 // ============================================================================
+// VOICE SERVICE IMPLEMENTÁCIÓ - TTS/STT Hang Rendszer
+// ============================================================================
+
+#[tonic::async_trait]
+impl VoiceService for HopeGrpcServer {
+    /// Speak - TTS streaming (szöveg → audio chunk-ok)
+    type SpeakStream = tokio_stream::wrappers::ReceiverStream<Result<AudioChunk, Status>>;
+
+    async fn speak(
+        &self,
+        request: Request<SpeakRequest>,
+    ) -> Result<Response<Self::SpeakStream>, Status> {
+        let req = request.into_inner();
+        println!("🎤 HOPE: Speak kérés: {}", req.text);
+
+        let voice = self.voice.read().await;
+
+        // gRPC SpeakRequest -> voice::SpeakRequest konverzió
+        let voice_req = crate::modules::voice::SpeakRequest {
+            text: req.text.clone(),
+            voice: if req.voice.is_empty() {
+                "berta".to_string()
+            } else {
+                req.voice.clone()
+            },
+            emotion: req.emotion.clone(),
+            emotions_21d: Some(req.emotions_21d.clone()),
+            prosody: None,
+            format: "wav".to_string(),
+            sample_rate: 22050,
+        };
+
+        // TTS meghívása
+        let audio_result = voice.speak(voice_req).await;
+
+        let (tx, rx) = tokio::sync::mpsc::channel(32);
+
+        tokio::spawn(async move {
+            match audio_result {
+                Ok(response) => {
+                    // Audio chunk-okra bontás (8KB-os darabok)
+                    let chunk_size = 8192;
+                    let chunks: Vec<&[u8]> = response.audio.chunks(chunk_size).collect();
+
+                    for (i, chunk) in chunks.iter().enumerate() {
+                        let is_final = i == chunks.len() - 1;
+                        let audio_chunk = AudioChunk {
+                            data: chunk.to_vec(),
+                            sequence: i as i32,
+                            is_final,
+                            format: response.format.clone(),
+                            sample_rate: response.sample_rate as i32,
+                            timestamp: 0.0,
+                            metadata: std::collections::HashMap::new(),
+                        };
+
+                        if tx.send(Ok(audio_chunk)).await.is_err() {
+                            break;
+                        }
+                    }
+                }
+                Err(e) => {
+                    let _ = tx
+                        .send(Err(Status::internal(format!("TTS hiba: {}", e))))
+                        .await;
+                }
+            }
+        });
+
+        Ok(Response::new(tokio_stream::wrappers::ReceiverStream::new(
+            rx,
+        )))
+    }
+
+    /// SpeakSync - Egyszerű TTS (teljes audio visszaadás)
+    async fn speak_sync(
+        &self,
+        request: Request<SpeakRequest>,
+    ) -> Result<Response<SpeakResponse>, Status> {
+        let req = request.into_inner();
+        println!("🎤 HOPE: SpeakSync kérés: {}", req.text);
+
+        let voice = self.voice.read().await;
+
+        // gRPC SpeakRequest -> voice::SpeakRequest konverzió
+        let voice_req = crate::modules::voice::SpeakRequest {
+            text: req.text.clone(),
+            voice: if req.voice.is_empty() {
+                "berta".to_string()
+            } else {
+                req.voice.clone()
+            },
+            emotion: req.emotion.clone(),
+            emotions_21d: Some(req.emotions_21d.clone()),
+            prosody: None,
+            format: "wav".to_string(),
+            sample_rate: 22050,
+        };
+
+        match voice.speak(voice_req).await {
+            Ok(response) => {
+                // Duration in seconds from milliseconds
+                let duration = response.duration_ms as f64 / 1000.0;
+
+                Ok(Response::new(SpeakResponse {
+                    audio: response.audio,
+                    format: response.format,
+                    sample_rate: response.sample_rate as i32,
+                    duration,
+                }))
+            }
+            Err(e) => Err(Status::internal(format!("TTS hiba: {}", e))),
+        }
+    }
+
+    /// Listen - STT streaming (audio → szöveg)
+    async fn listen(
+        &self,
+        request: Request<tonic::Streaming<AudioChunk>>,
+    ) -> Result<Response<TranscriptionResponse>, Status> {
+        let mut stream = request.into_inner();
+        println!("👂 HOPE: Listen streaming kérés");
+
+        // Audio összegyűjtése
+        let mut audio_data = Vec::new();
+        while let Some(chunk) = stream.message().await? {
+            audio_data.extend(chunk.data);
+        }
+
+        // STT meghívása
+        let voice = self.voice.read().await;
+        let listen_req = crate::modules::voice::ListenRequest {
+            language: "hu".to_string(),
+            model: "whisper".to_string(),
+            vad_enabled: true,
+            word_timestamps: false,
+        };
+
+        match voice.transcribe(audio_data, listen_req).await {
+            Ok(result) => Ok(Response::new(TranscriptionResponse {
+                text: result.text.clone(),
+                language: result.language.clone(),
+                confidence: result.confidence,
+                words: Vec::new(), // No word-level timestamps in this version
+                duration: result.duration_ms as f64 / 1000.0,
+            })),
+            Err(e) => Err(Status::internal(format!("STT hiba: {}", e))),
+        }
+    }
+
+    /// ListenContinuous - Folyamatos hallgatás VAD-dal
+    type ListenContinuousStream =
+        tokio_stream::wrappers::ReceiverStream<Result<TranscriptionChunk, Status>>;
+
+    async fn listen_continuous(
+        &self,
+        request: Request<ListenContinuousRequest>,
+    ) -> Result<Response<Self::ListenContinuousStream>, Status> {
+        let req = request.into_inner();
+        println!("👂 HOPE: ListenContinuous kérés (VAD: {})", req.vad_enabled);
+
+        let (tx, rx) = tokio::sync::mpsc::channel(32);
+
+        // Placeholder - valós implementációnál a microphone input stream
+        tokio::spawn(async move {
+            // Kezdeti chunk jelezve hogy elindult a hallgatás
+            let _ = tx
+                .send(Ok(TranscriptionChunk {
+                    text: String::new(),
+                    is_final: false,
+                    confidence: 0.0,
+                    timestamp: 0.0,
+                    speaker: String::new(),
+                    speech_started: false,
+                    speech_ended: false,
+                }))
+                .await;
+        });
+
+        Ok(Response::new(tokio_stream::wrappers::ReceiverStream::new(
+            rx,
+        )))
+    }
+
+    /// Converse - Bidirectional voice conversation
+    type ConverseStream = tokio_stream::wrappers::ReceiverStream<Result<ConversationChunk, Status>>;
+
+    async fn converse(
+        &self,
+        _request: Request<tonic::Streaming<AudioChunk>>,
+    ) -> Result<Response<Self::ConverseStream>, Status> {
+        println!("🎤👂 HOPE: Converse bidirectional stream");
+
+        let (tx, rx) = tokio::sync::mpsc::channel(32);
+
+        // Placeholder - valós implementáció a voice modulban
+        tokio::spawn(async move {
+            let _ = tx
+                .send(Ok(ConversationChunk {
+                    content: None,
+                    turn: "hope".to_string(),
+                    timestamp: 0.0,
+                }))
+                .await;
+        });
+
+        Ok(Response::new(tokio_stream::wrappers::ReceiverStream::new(
+            rx,
+        )))
+    }
+
+    /// GetVoices - Elérhető hangok listázása
+    async fn get_voices(
+        &self,
+        _request: Request<EmptyRequest>,
+    ) -> Result<Response<VoicesResponse>, Status> {
+        println!("🎤 HOPE: GetVoices kérés");
+
+        let voice = self.voice.read().await;
+        let voices_list = voice.list_voices();
+        let current_voice = voice.get_current_voice().await;
+
+        let voices: Vec<VoiceInfo> = voices_list
+            .iter()
+            .map(|v| {
+                let gender_str = match v.gender {
+                    crate::modules::voice::Gender::Female => "female",
+                    crate::modules::voice::Gender::Male => "male",
+                };
+                VoiceInfo {
+                    id: v.id.clone(),
+                    name: v.name.clone(),
+                    language: v.language.clone(),
+                    gender: gender_str.to_string(),
+                    description: v.description.clone(),
+                    available: v.available,
+                    emotions: v.emotions.clone(),
+                    engine: v.engine.to_string(),
+                    style: v.style.clone(),
+                }
+            })
+            .collect();
+
+        Ok(Response::new(VoicesResponse {
+            voices,
+            current_voice,
+        }))
+    }
+
+    /// SetVoice - Hang beállítása
+    async fn set_voice(
+        &self,
+        request: Request<SetVoiceRequest>,
+    ) -> Result<Response<SetVoiceResponse>, Status> {
+        let req = request.into_inner();
+        println!("🎤 HOPE: SetVoice kérés: {}", req.voice);
+
+        let voice = self.voice.read().await;
+
+        match voice.set_voice(&req.voice).await {
+            Ok(()) => Ok(Response::new(SetVoiceResponse {
+                success: true,
+                message: format!("Hang beállítva: {}", req.voice),
+                current_voice: req.voice,
+            })),
+            Err(e) => {
+                let current = voice.get_current_voice().await;
+                Ok(Response::new(SetVoiceResponse {
+                    success: false,
+                    message: e.to_string(),
+                    current_voice: current,
+                }))
+            }
+        }
+    }
+
+    /// GetVoiceStatus - Voice rendszer állapota
+    async fn get_voice_status(
+        &self,
+        _request: Request<EmptyRequest>,
+    ) -> Result<Response<VoiceStatusResponse>, Status> {
+        let voice = self.voice.read().await;
+        let _stats = voice.get_stats().await;
+        let current_voice = voice.get_current_voice().await;
+        let current_emotion = voice.get_current_emotion().await;
+        let emotions_21d = voice.get_emotions_21d().await;
+        let tts_available = voice.tts_available().await;
+        let stt_available = voice.stt_available().await;
+
+        Ok(Response::new(VoiceStatusResponse {
+            tts_available,
+            stt_available,
+            current_voice,
+            current_emotion,
+            current_emotions_21d: emotions_21d,
+            tts_port: voice.get_tts_port() as i32,
+            stt_port: voice.get_stt_port() as i32,
+            latency_ms: 0.0, // TODO: measure actual latency
+        }))
+    }
+
+    /// CloneVoice - Hang klónozása
+    async fn clone_voice(
+        &self,
+        request: Request<CloneVoiceRequest>,
+    ) -> Result<Response<CloneVoiceResponse>, Status> {
+        let req = request.into_inner();
+        println!("🎤 HOPE: CloneVoice kérés: {}", req.name);
+
+        let voice = self.voice.read().await;
+
+        // Audio samples átalakítása
+        let samples: Vec<Vec<u8>> = req.audio_samples.into_iter().collect();
+
+        match voice.clone_voice(&req.name, &samples).await {
+            Ok(clone) => Ok(Response::new(CloneVoiceResponse {
+                success: true,
+                clone_id: clone.id.to_string(),
+                clone: Some(super::proto::VoiceClone {
+                    id: clone.id.to_string(),
+                    name: clone.name.clone(),
+                    base_voice: String::new(), // Not tracked in current implementation
+                    signature: Some(convert_voice_signature(&clone.signature)),
+                    status: "ready".to_string(),
+                    training_samples: clone.sample_count as i32,
+                    quality_score: clone.quality_score,
+                    created_at: Some(Timestamp {
+                        seconds: clone.created_at.timestamp(),
+                        nanos: 0,
+                    }),
+                }),
+                error: String::new(),
+            })),
+            Err(e) => Ok(Response::new(CloneVoiceResponse {
+                success: false,
+                clone_id: String::new(),
+                clone: None,
+                error: e,
+            })),
+        }
+    }
+
+    /// GetVoiceClones - Klónozott hangok listázása
+    async fn get_voice_clones(
+        &self,
+        request: Request<GetVoiceClonesRequest>,
+    ) -> Result<Response<VoiceClonesResponse>, Status> {
+        let _req = request.into_inner();
+
+        let voice = self.voice.read().await;
+        let clones = voice.list_cloned_voices().await;
+
+        let proto_clones: Vec<super::proto::VoiceClone> = clones
+            .iter()
+            .map(|c| super::proto::VoiceClone {
+                id: c.id.to_string(),
+                name: c.name.clone(),
+                base_voice: String::new(),
+                signature: Some(convert_voice_signature(&c.signature)),
+                status: "ready".to_string(),
+                training_samples: c.sample_count as i32,
+                quality_score: c.quality_score,
+                created_at: Some(Timestamp {
+                    seconds: c.created_at.timestamp(),
+                    nanos: 0,
+                }),
+            })
+            .collect();
+
+        Ok(Response::new(VoiceClonesResponse {
+            clones: proto_clones,
+            total: clones.len() as i32,
+        }))
+    }
+
+    /// RegisterVoice - Hang aláírás regisztrálása (Resonance integráció)
+    async fn register_voice(
+        &self,
+        request: Request<RegisterVoiceRequest>,
+    ) -> Result<Response<RegisterVoiceResponse>, Status> {
+        let req = request.into_inner();
+        println!("🔐 HOPE: RegisterVoice kérés user_id: {}", req.user_id);
+
+        let voice = self.voice.read().await;
+
+        // Audio samples összefűzése és elemzése
+        let combined_audio: Vec<u8> = req.audio_samples.into_iter().flatten().collect();
+        let signature = voice.analyze_voice(&combined_audio).await;
+
+        // Regisztráció a voice engine-ben
+        let sig_id = voice.register_voice_signature(signature.clone()).await;
+
+        Ok(Response::new(RegisterVoiceResponse {
+            success: true,
+            signature_id: sig_id.to_string(),
+            signature: Some(convert_voice_signature(&signature)),
+            error: String::new(),
+        }))
+    }
+
+    /// VerifyVoice - Hang verifikáció
+    async fn verify_voice(
+        &self,
+        request: Request<VerifyVoiceRequest>,
+    ) -> Result<Response<VerifyVoiceResponse>, Status> {
+        let req = request.into_inner();
+        let threshold = if req.threshold > 0.0 {
+            req.threshold
+        } else {
+            0.85
+        };
+        println!("🔐 HOPE: VerifyVoice kérés (threshold: {})", threshold);
+
+        let voice = self.voice.read().await;
+
+        // Audio elemzése
+        let signature = voice.analyze_voice(&req.audio_data).await;
+
+        // Verifikáció - compare against all known signatures
+        let known_sigs = voice.get_known_signatures().await;
+        let mut best_match: Option<(f64, uuid::Uuid)> = None;
+
+        for known_sig in &known_sigs {
+            let sim = signature.similarity(known_sig);
+            if sim >= threshold {
+                if best_match.is_none() || sim > best_match.unwrap().0 {
+                    best_match = Some((sim, known_sig.id));
+                }
+            }
+        }
+
+        let (verified, confidence, matched_id) = match best_match {
+            Some((conf, id)) => (true, conf, Some(id.to_string())),
+            None => (false, 0.0, None),
+        };
+
+        Ok(Response::new(VerifyVoiceResponse {
+            verified,
+            confidence,
+            matched_user_id: matched_id.clone().unwrap_or_default(),
+            matched_user_name: matched_id.unwrap_or_default(), // Same as ID for now
+            analyzed_signature: Some(convert_voice_signature(&signature)),
+            candidates: Vec::new(),
+        }))
+    }
+
+    /// AnalyzeVoice - Hang elemzés (signature generálás)
+    async fn analyze_voice(
+        &self,
+        request: Request<AnalyzeVoiceRequest>,
+    ) -> Result<Response<AnalyzeVoiceResponse>, Status> {
+        let req = request.into_inner();
+        println!(
+            "🔐 HOPE: AnalyzeVoice kérés ({} bytes)",
+            req.audio_data.len()
+        );
+
+        let voice = self.voice.read().await;
+        let signature = voice.analyze_voice(&req.audio_data).await;
+
+        Ok(Response::new(AnalyzeVoiceResponse {
+            success: true,
+            signature: Some(convert_voice_signature(&signature)),
+            error: String::new(),
+        }))
+    }
+
+    /// GetVoiceSignatures - Regisztrált hang aláírások listázása
+    async fn get_voice_signatures(
+        &self,
+        request: Request<GetVoiceSignaturesRequest>,
+    ) -> Result<Response<VoiceSignaturesResponse>, Status> {
+        let _req = request.into_inner();
+
+        let voice = self.voice.read().await;
+        let signatures = voice.get_known_signatures().await;
+
+        let proto_sigs: Vec<super::proto::VoiceSignatureInfo> = signatures
+            .iter()
+            .map(|sig| super::proto::VoiceSignatureInfo {
+                id: sig.id.to_string(),
+                user_id: sig.id.to_string(),
+                user_name: String::new(),
+                sample_count: sig.sample_count as i32,
+                confidence: 1.0,
+                created_at: Some(Timestamp {
+                    seconds: sig.created_at.timestamp(),
+                    nanos: 0,
+                }),
+                last_verified: None,
+            })
+            .collect();
+
+        Ok(Response::new(VoiceSignaturesResponse {
+            signatures: proto_sigs,
+            total: signatures.len() as i32,
+        }))
+    }
+}
+
+/// VoiceSignature konvertálása proto típusra
+fn convert_voice_signature(
+    sig: &crate::modules::voice::VoiceSignature,
+) -> super::proto::VoiceSignature {
+    super::proto::VoiceSignature {
+        id: sig.id.to_string(),
+        pitch_mean: sig.pitch_mean,
+        pitch_variance: sig.pitch_variance,
+        speaking_rate: sig.speaking_rate,
+        pause_pattern: sig.pause_pattern.clone(),
+        formant_frequencies: sig.formant_frequencies.to_vec(),
+        spectral_envelope: sig.spectral_envelope.clone(),
+        energy_contour: sig.energy_contour.clone(),
+        jitter: sig.jitter,
+        shimmer: sig.shimmer,
+        hnr: sig.hnr,
+        created_at: Some(Timestamp {
+            seconds: sig.created_at.timestamp(),
+            nanos: 0,
+        }),
+        sample_count: sig.sample_count as i32,
+    }
+}
+
+// ============================================================================
+// NAVIGATION SERVICE IMPLEMENTÁCIÓ - Intelligens útvonaltervezés
+// ============================================================================
+
+#[tonic::async_trait]
+impl NavigationService for HopeGrpcServer {
+    /// PlanRoute - Útvonal tervezése mood/energia alapján
+    async fn plan_route(
+        &self,
+        request: Request<PlanRouteRequest>,
+    ) -> Result<Response<PlanRouteResponse>, Status> {
+        let req = request.into_inner();
+        println!("🗺️ HOPE: PlanRoute kérés");
+
+        // Kontextus konvertálása
+        let ctx = self.convert_navigation_context(&req);
+
+        match self.navigation.plan_route(ctx).await {
+            Ok(route) => {
+                let proto_route = self.convert_smart_route_to_proto(&route);
+                Ok(Response::new(PlanRouteResponse {
+                    success: true,
+                    route: Some(proto_route),
+                    error: String::new(),
+                }))
+            }
+            Err(e) => Ok(Response::new(PlanRouteResponse {
+                success: false,
+                route: None,
+                error: e.to_string(),
+            })),
+        }
+    }
+
+    /// GetAlternatives - Alternatív útvonalak
+    async fn get_alternatives(
+        &self,
+        request: Request<PlanRouteRequest>,
+    ) -> Result<Response<AlternativeRoutesResponse>, Status> {
+        let req = request.into_inner();
+        println!("🗺️ HOPE: GetAlternatives kérés");
+
+        let ctx = self.convert_navigation_context(&req);
+
+        match self.navigation.plan_alternatives(ctx).await {
+            Ok(routes) => {
+                let proto_routes: Vec<SmartRouteProto> = routes
+                    .into_iter()
+                    .map(|r| self.convert_smart_route_to_proto(&r))
+                    .collect();
+                let total = proto_routes.len() as i32;
+                Ok(Response::new(AlternativeRoutesResponse {
+                    routes: proto_routes,
+                    total,
+                }))
+            }
+            Err(e) => Err(Status::internal(format!("Alternatívák hiba: {}", e))),
+        }
+    }
+
+    /// StartNavigation - Navigáció indítása
+    async fn start_navigation(
+        &self,
+        request: Request<StartNavigationRequest>,
+    ) -> Result<Response<StartNavigationResponse>, Status> {
+        let req = request.into_inner();
+        println!("🗺️ HOPE: StartNavigation kérés");
+
+        if let Some(route_proto) = req.route {
+            let route = self.convert_proto_to_smart_route(&route_proto);
+            match self.navigation.start_navigation(route).await {
+                Ok(()) => Ok(Response::new(StartNavigationResponse {
+                    success: true,
+                    navigation_id: uuid::Uuid::new_v4().to_string(),
+                    error: String::new(),
+                })),
+                Err(e) => Ok(Response::new(StartNavigationResponse {
+                    success: false,
+                    navigation_id: String::new(),
+                    error: e.to_string(),
+                })),
+            }
+        } else {
+            Ok(Response::new(StartNavigationResponse {
+                success: false,
+                navigation_id: String::new(),
+                error: "Nincs útvonal megadva".to_string(),
+            }))
+        }
+    }
+
+    /// UpdatePosition - Pozíció frissítése (bidirectional streaming)
+    type UpdatePositionStream =
+        tokio_stream::wrappers::ReceiverStream<Result<NavigationUpdateResponse, Status>>;
+
+    async fn update_position(
+        &self,
+        request: Request<tonic::Streaming<PositionUpdate>>,
+    ) -> Result<Response<Self::UpdatePositionStream>, Status> {
+        let mut stream = request.into_inner();
+        let navigation = self.navigation.clone();
+        let (tx, rx) = tokio::sync::mpsc::channel(32);
+
+        tokio::spawn(async move {
+            while let Ok(Some(pos)) = stream.message().await {
+                let geo_location = GeoLocation {
+                    latitude: pos.latitude,
+                    longitude: pos.longitude,
+                    altitude: Some(0.0),
+                    accuracy: Some(pos.accuracy),
+                    source: GeoSource::Gps,
+                    timestamp: chrono::Utc::now(),
+                };
+
+                if let Some(update) = navigation.update_position(geo_location).await {
+                    let response = NavigationUpdateResponse {
+                        status: if update.off_route {
+                            "off_route".to_string()
+                        } else {
+                            "on_route".to_string()
+                        },
+                        progress: 0.5, // Calculated from route progress
+                        remaining_km: update.distance_to_next,
+                        remaining_secs: (update.eta - chrono::Utc::now()).num_seconds(),
+                        next_instruction: update.next_instruction.unwrap_or_default(),
+                        distance_to_turn: update.distance_to_next,
+                        current_position: Some(GeoPointProto {
+                            latitude: update.position.latitude,
+                            longitude: update.position.longitude,
+                            name: String::new(),
+                            place_id: String::new(),
+                        }),
+                        nearby_memory: String::new(),
+                        nearby_place: String::new(),
+                        suggestion: update.context_message.unwrap_or_default(),
+                    };
+
+                    if tx.send(Ok(response)).await.is_err() {
+                        break;
+                    }
+                }
+            }
+        });
+
+        Ok(Response::new(tokio_stream::wrappers::ReceiverStream::new(
+            rx,
+        )))
+    }
+
+    /// StopNavigation - Navigáció leállítása
+    async fn stop_navigation(
+        &self,
+        _request: Request<StopNavigationRequest>,
+    ) -> Result<Response<CompletedRouteResponse>, Status> {
+        println!("🗺️ HOPE: StopNavigation kérés");
+
+        if let Some(completed) = self.navigation.stop_navigation().await {
+            Ok(Response::new(CompletedRouteResponse {
+                success: true,
+                route_id: completed.route_id.to_string(),
+                actual_distance_km: completed.actual_distance_km,
+                actual_duration_secs: completed.actual_duration.num_seconds(),
+                waypoints_visited: completed
+                    .stops_made
+                    .into_iter()
+                    .map(|p| GeoPointProto {
+                        latitude: p.location.latitude,
+                        longitude: p.location.longitude,
+                        name: p.name.clone(),
+                        place_id: p.id.to_string(),
+                    })
+                    .collect(),
+                stops_made: 0, // Count would need separate tracking
+                average_speed_kmh: completed.average_speed_kmh,
+                started_at: Some(Timestamp {
+                    seconds: completed.started_at.timestamp(),
+                    nanos: 0,
+                }),
+                completed_at: Some(Timestamp {
+                    seconds: completed.completed_at.timestamp(),
+                    nanos: 0,
+                }),
+            }))
+        } else {
+            Ok(Response::new(CompletedRouteResponse {
+                success: false,
+                route_id: String::new(),
+                actual_distance_km: 0.0,
+                actual_duration_secs: 0,
+                waypoints_visited: vec![],
+                stops_made: 0,
+                average_speed_kmh: 0.0,
+                started_at: None,
+                completed_at: None,
+            }))
+        }
+    }
+
+    /// PredictDestination - Cél előrejelzés (Symbiosis)
+    async fn predict_destination(
+        &self,
+        _request: Request<PredictDestinationRequest>,
+    ) -> Result<Response<PredictDestinationResponse>, Status> {
+        println!("🔮 HOPE: PredictDestination kérés");
+
+        if let Some(prediction) = self.navigation.predict_destination().await {
+            let reasons: Vec<String> = prediction
+                .reasoning
+                .iter()
+                .map(|r| format!("{:?}", r))
+                .collect();
+            let proto_prediction = PredictedDestinationProto {
+                place_id: prediction.place.id.to_string(),
+                place_name: prediction.place.name.clone(),
+                location: Some(GeoPointProto {
+                    latitude: prediction.place.location.latitude,
+                    longitude: prediction.place.location.longitude,
+                    name: prediction.place.name.clone(),
+                    place_id: prediction.place.id.to_string(),
+                }),
+                confidence: prediction.confidence,
+                reason: reasons.first().cloned().unwrap_or_default(),
+                reasoning: reasons.join(", "),
+                suggested_departure: Some(Timestamp {
+                    seconds: prediction.suggested_departure.timestamp(),
+                    nanos: 0,
+                }),
+            };
+
+            Ok(Response::new(PredictDestinationResponse {
+                has_prediction: true,
+                prediction: Some(proto_prediction),
+                alternatives: vec![],
+            }))
+        } else {
+            Ok(Response::new(PredictDestinationResponse {
+                has_prediction: false,
+                prediction: None,
+                alternatives: vec![],
+            }))
+        }
+    }
+
+    /// GetETA - ETA számítás
+    async fn get_eta(
+        &self,
+        request: Request<GetEtaRequest>,
+    ) -> Result<Response<GetEtaResponse>, Status> {
+        let req = request.into_inner();
+        println!("⏱️ HOPE: GetETA kérés");
+
+        if let Some(dest) = req.destination {
+            let destination = GeoLocation {
+                latitude: dest.latitude,
+                longitude: dest.longitude,
+                altitude: None,
+                accuracy: None,
+                source: GeoSource::Manual,
+                timestamp: chrono::Utc::now(),
+            };
+
+            match self.navigation.calculate_eta(&destination).await {
+                Ok((duration, arrival, traffic, confidence)) => {
+                    Ok(Response::new(GetEtaResponse {
+                        duration_secs: duration.num_seconds(),
+                        arrival_time: Some(Timestamp {
+                            seconds: arrival.timestamp(),
+                            nanos: 0,
+                        }),
+                        traffic_level: format!("{:?}", traffic),
+                        confidence,
+                        distance_km: 0.0, // TODO: Calculate from route
+                    }))
+                }
+                Err(e) => Err(Status::internal(format!("ETA hiba: {}", e))),
+            }
+        } else {
+            Err(Status::invalid_argument("Nincs cél megadva"))
+        }
+    }
+
+    /// FindNearby - Közeli helyek keresése
+    async fn find_nearby(
+        &self,
+        request: Request<FindNearbyRequest>,
+    ) -> Result<Response<FindNearbyResponse>, Status> {
+        let req = request.into_inner();
+        println!("📍 HOPE: FindNearby kérés");
+
+        let category = if req.category.is_empty() {
+            None
+        } else {
+            Some(req.category.as_str())
+        };
+
+        let places = self
+            .navigation
+            .find_nearby(category, req.radius_km, req.on_route_only)
+            .await;
+
+        let proto_places: Vec<PlaceWithContextProto> = places
+            .into_iter()
+            .take(req.limit as usize)
+            .map(|p| PlaceWithContextProto {
+                place_id: p.place.id.to_string(),
+                name: p.place.name.clone(),
+                place_type: format!("{:?}", p.place.place_type),
+                location: Some(GeoPointProto {
+                    latitude: p.place.location.latitude,
+                    longitude: p.place.location.longitude,
+                    name: p.place.name.clone(),
+                    place_id: p.place.id.to_string(),
+                }),
+                distance_km: p.distance_km,
+                visit_count: p.place.visit_count as i64,
+                is_favorite: p.place.visit_count > 5,
+                memories: vec![],
+                emotional_history: p.context.unwrap_or_default(),
+                relevance_score: 0.5,
+            })
+            .collect();
+
+        let total = proto_places.len() as i32;
+        Ok(Response::new(FindNearbyResponse {
+            places: proto_places,
+            total,
+        }))
+    }
+
+    /// GetRouteContext - Útvonal kontextus (emlékek, érzelmek)
+    async fn get_route_context(
+        &self,
+        request: Request<GetRouteContextRequest>,
+    ) -> Result<Response<RouteContextResponse>, Status> {
+        let req = request.into_inner();
+        println!("💭 HOPE: GetRouteContext kérés");
+
+        if let Some(route_proto) = req.route {
+            let route = self.convert_proto_to_smart_route(&route_proto);
+            let context = self.navigation.get_route_context(&route).await;
+
+            Ok(Response::new(RouteContextResponse {
+                emotions: context
+                    .emotional_history
+                    .into_iter()
+                    .map(|e| EmotionAtLocationProto {
+                        location: Some(GeoPointProto {
+                            latitude: e.location.latitude,
+                            longitude: e.location.longitude,
+                            name: String::new(),
+                            place_id: String::new(),
+                        }),
+                        dominant_emotion: e.emotion,
+                        intensity: e.intensity,
+                        when: Some(Timestamp {
+                            seconds: e.when.timestamp(),
+                            nanos: 0,
+                        }),
+                        context: String::new(),
+                    })
+                    .collect(),
+                people_associated: context.people_associated,
+                events: context
+                    .events_nearby
+                    .into_iter()
+                    .map(|e| NearbyEventProto {
+                        event_id: String::new(),
+                        name: e.name,
+                        location: Some(GeoPointProto {
+                            latitude: e.location.latitude,
+                            longitude: e.location.longitude,
+                            name: String::new(),
+                            place_id: String::new(),
+                        }),
+                        starts_at: e.when.map(|w| Timestamp {
+                            seconds: w.timestamp(),
+                            nanos: 0,
+                        }),
+                        ends_at: e.when.map(|w| Timestamp {
+                            seconds: w.timestamp(),
+                            nanos: 0,
+                        }),
+                        category: String::new(),
+                    })
+                    .collect(),
+                suggestions: context
+                    .suggestions
+                    .into_iter()
+                    .map(|s| ContextSuggestionProto {
+                        suggestion: s.text,
+                        action: s.action.map(|a| format!("{:?}", a)).unwrap_or_default(),
+                        location: None,
+                        reason: format!("Relevance: {:.0}%", s.relevance * 100.0),
+                    })
+                    .collect(),
+                overall_emotional_tone: String::new(),
+            }))
+        } else {
+            Err(Status::invalid_argument("Nincs útvonal megadva"))
+        }
+    }
+
+    /// SuggestDeparture - Indulási idő javaslat
+    async fn suggest_departure(
+        &self,
+        request: Request<SuggestDepartureRequest>,
+    ) -> Result<Response<SuggestDepartureResponse>, Status> {
+        let req = request.into_inner();
+        println!("🕐 HOPE: SuggestDeparture kérés");
+
+        if let Some(dest) = req.destination {
+            let destination = Place {
+                id: uuid::Uuid::new_v4(),
+                name: dest.name.clone(),
+                place_type: PlaceType::Other,
+                location: GeoLocation {
+                    latitude: dest.latitude,
+                    longitude: dest.longitude,
+                    altitude: None,
+                    accuracy: None,
+                    source: GeoSource::Manual,
+                    timestamp: chrono::Utc::now(),
+                },
+                radius: 100.0,
+                address: None,
+                country_code: None,
+                visit_count: 0,
+                last_visit: None,
+                first_visit: chrono::Utc::now(),
+                memory_count: 0,
+                emotional_associations: std::collections::HashMap::new(),
+                metadata: std::collections::HashMap::new(),
+            };
+
+            let suggested = self.navigation.suggest_departure_time(&destination).await;
+
+            Ok(Response::new(SuggestDepartureResponse {
+                suggested_departure: Some(Timestamp {
+                    seconds: suggested.timestamp(),
+                    nanos: 0,
+                }),
+                estimated_duration_secs: 1800, // TODO: Calculate from route
+                traffic_prediction: "medium".to_string(),
+                reasoning: "Az útvonal és forgalom alapján javasolt indulási idő".to_string(),
+                preparation_buffer_mins: if req.consider_preparation { 15 } else { 0 },
+            }))
+        } else {
+            Err(Status::invalid_argument("Nincs cél megadva"))
+        }
+    }
+
+    /// GetNavigationStats - Navigációs statisztikák
+    async fn get_navigation_stats(
+        &self,
+        _request: Request<EmptyRequest>,
+    ) -> Result<Response<NavigationStatsResponse>, Status> {
+        println!("📊 HOPE: GetNavigationStats kérés");
+
+        let stats = self.navigation.get_stats().await;
+
+        Ok(Response::new(NavigationStatsResponse {
+            total_routes_planned: stats.total_routes_planned as i64,
+            total_navigations_completed: stats.total_routes_completed as i64,
+            total_distance_km: stats.total_distance_km,
+            total_duration_secs: stats.total_time_navigating.num_seconds(),
+            avg_accuracy_percent: if stats.predictions_made > 0 {
+                (stats.predictions_correct as f64 / stats.predictions_made as f64) * 100.0
+            } else {
+                0.0
+            },
+            destinations_predicted: stats.predictions_made as i64,
+            prediction_accuracy: if stats.predictions_made > 0 {
+                stats.predictions_correct as f64 / stats.predictions_made as f64
+            } else {
+                0.0
+            },
+            learned_patterns: stats.favorite_destinations.len() as i32,
+            favorite_destinations: stats.favorite_destinations.len() as i32,
+        }))
+    }
+}
+
+// Navigation helper methods
+impl HopeGrpcServer {
+    fn convert_navigation_context(
+        &self,
+        req: &PlanRouteRequest,
+    ) -> crate::modules::navigation::NavigationContext {
+        use crate::modules::navigation::{
+            EmotionState, GeoPoint, NavigationContext, RoutePreferences,
+        };
+
+        let origin = req.origin.as_ref().map(|o| GeoPoint {
+            latitude: o.latitude,
+            longitude: o.longitude,
+            name: if o.name.is_empty() {
+                None
+            } else {
+                Some(o.name.clone())
+            },
+        });
+
+        let destination = req
+            .destination
+            .as_ref()
+            .map(|d| GeoPoint {
+                latitude: d.latitude,
+                longitude: d.longitude,
+                name: if d.name.is_empty() {
+                    None
+                } else {
+                    Some(d.name.clone())
+                },
+            })
+            .unwrap_or(GeoPoint {
+                latitude: 0.0,
+                longitude: 0.0,
+                name: None,
+            });
+
+        let waypoints: Vec<GeoPoint> = req
+            .waypoints
+            .iter()
+            .map(|w| GeoPoint {
+                latitude: w.latitude,
+                longitude: w.longitude,
+                name: if w.name.is_empty() {
+                    None
+                } else {
+                    Some(w.name.clone())
+                },
+            })
+            .collect();
+
+        let ctx = req.context.as_ref();
+        let prefs = req.preferences.as_ref();
+
+        NavigationContext {
+            origin,
+            destination,
+            waypoints,
+            current_mood: ctx.map(|c| c.current_mood.clone()).unwrap_or_default(),
+            energy_level: ctx.map(|c| c.energy_level).unwrap_or(0.7),
+            time_pressure: ctx.map(|c| c.time_pressure).unwrap_or(0.5),
+            emotions: ctx
+                .map(|c| EmotionState {
+                    dominant: c.current_mood.clone(),
+                    intensity: 0.5,
+                    valence: 0.0,
+                    arousal: 0.0,
+                })
+                .unwrap_or_default(),
+            preferences: RoutePreferences {
+                avoid_highways: prefs.map(|p| p.avoid_highways).unwrap_or(false),
+                avoid_tolls: prefs.map(|p| p.avoid_tolls).unwrap_or(false),
+                prefer_scenic: prefs.map(|p| p.scenic_route).unwrap_or(false),
+                prefer_familiar: true, // Default - proto doesn't have this field
+                max_walking_distance: prefs.map(|p| p.max_walking_km).unwrap_or(2.0),
+                accessibility_needs: vec![],
+                learned_avoidances: vec![],
+                favorite_routes: vec![],
+                preferred_stops: vec![],
+            },
+            purpose: ctx.map(|c| c.purpose.clone()).unwrap_or_default(),
+        }
+    }
+
+    fn convert_smart_route_to_proto(
+        &self,
+        route: &crate::modules::navigation::SmartRoute,
+    ) -> SmartRouteProto {
+        let origin = route.path.first();
+        let destination = route.path.last();
+
+        SmartRouteProto {
+            id: route.id.to_string(),
+            origin: origin.map(|o| GeoPointProto {
+                latitude: o.latitude,
+                longitude: o.longitude,
+                name: o.name.clone().unwrap_or_default(),
+                place_id: String::new(),
+            }),
+            destination: destination.map(|d| GeoPointProto {
+                latitude: d.latitude,
+                longitude: d.longitude,
+                name: d.name.clone().unwrap_or_default(),
+                place_id: String::new(),
+            }),
+            distance_km: route.total_distance_km,
+            duration_secs: route.total_duration.num_seconds(),
+            segments: route
+                .segments
+                .iter()
+                .map(|s| RouteSegmentProto {
+                    start: Some(GeoPointProto {
+                        latitude: s.start.latitude,
+                        longitude: s.start.longitude,
+                        name: s.start.name.clone().unwrap_or_default(),
+                        place_id: String::new(),
+                    }),
+                    end: Some(GeoPointProto {
+                        latitude: s.end.latitude,
+                        longitude: s.end.longitude,
+                        name: s.end.name.clone().unwrap_or_default(),
+                        place_id: String::new(),
+                    }),
+                    distance_km: s.distance_km,
+                    duration_secs: s.duration.num_seconds(),
+                    road_type: format!("{:?}", s.road_type),
+                    instruction: s.instruction.clone(),
+                    traffic_level: format!("{:?}", s.traffic),
+                })
+                .collect(),
+            memories_on_route: route
+                .memories_on_route
+                .iter()
+                .map(|m| MemoryOnRouteProto {
+                    memory_id: m.id.clone(),
+                    content: m.content.clone(),
+                    location: Some(GeoPointProto {
+                        latitude: m.location.latitude,
+                        longitude: m.location.longitude,
+                        name: String::new(),
+                        place_id: String::new(),
+                    }),
+                    importance: m.importance,
+                    emotional_tag: m.emotional_tag.clone(),
+                })
+                .collect(),
+            places_on_route: route
+                .places_on_route
+                .iter()
+                .map(|p| PlaceOnRouteProto {
+                    place_id: p.id.to_string(),
+                    name: p.name.clone(),
+                    place_type: format!("{:?}", p.place_type),
+                    location: Some(GeoPointProto {
+                        latitude: p.location.latitude,
+                        longitude: p.location.longitude,
+                        name: p.name.clone(),
+                        place_id: p.id.to_string(),
+                    }),
+                    visit_count: p.visit_count as i64,
+                    is_favorite: p.visit_count > 5,
+                })
+                .collect(),
+            suggested_stops: route
+                .suggested_stops
+                .iter()
+                .map(|s| SuggestedStopProto {
+                    place_id: s.place.id.to_string(),
+                    name: s.place.name.clone(),
+                    reason: format!("{:?}", s.reason),
+                    description: format!("Relevance: {:.2}", s.relevance_score),
+                    location: Some(GeoPointProto {
+                        latitude: s.place.location.latitude,
+                        longitude: s.place.location.longitude,
+                        name: s.place.name.clone(),
+                        place_id: s.place.id.to_string(),
+                    }),
+                    suggested_duration_mins: s.detour_time.num_seconds() / 60,
+                })
+                .collect(),
+            emotional_score: route.emotional_score,
+            context_notes: route.context_notes.clone(),
+            traffic_level: format!("{:?}", route.traffic_level),
+        }
+    }
+
+    fn convert_proto_to_smart_route(
+        &self,
+        proto: &SmartRouteProto,
+    ) -> crate::modules::navigation::SmartRoute {
+        use crate::modules::navigation::{
+            Delay, GeoPoint, MemoryOnRoute, RoadType, RouteSegment, SmartRoute, TrafficLevel,
+        };
+        use chrono::Duration;
+
+        // Build path from origin, segments, and destination
+        let mut path = Vec::new();
+        if let Some(o) = &proto.origin {
+            path.push(GeoPoint {
+                latitude: o.latitude,
+                longitude: o.longitude,
+                name: if o.name.is_empty() {
+                    None
+                } else {
+                    Some(o.name.clone())
+                },
+            });
+        }
+        if let Some(d) = &proto.destination {
+            path.push(GeoPoint {
+                latitude: d.latitude,
+                longitude: d.longitude,
+                name: if d.name.is_empty() {
+                    None
+                } else {
+                    Some(d.name.clone())
+                },
+            });
+        }
+
+        SmartRoute {
+            id: uuid::Uuid::parse_str(&proto.id).unwrap_or_else(|_| uuid::Uuid::new_v4()),
+            path,
+            total_distance_km: proto.distance_km,
+            total_duration: Duration::seconds(proto.duration_secs),
+            eta: chrono::Utc::now() + Duration::seconds(proto.duration_secs),
+            segments: proto
+                .segments
+                .iter()
+                .map(|s| RouteSegment {
+                    start: s
+                        .start
+                        .as_ref()
+                        .map(|p| GeoPoint {
+                            latitude: p.latitude,
+                            longitude: p.longitude,
+                            name: if p.name.is_empty() {
+                                None
+                            } else {
+                                Some(p.name.clone())
+                            },
+                        })
+                        .unwrap_or_default(),
+                    end: s
+                        .end
+                        .as_ref()
+                        .map(|p| GeoPoint {
+                            latitude: p.latitude,
+                            longitude: p.longitude,
+                            name: if p.name.is_empty() {
+                                None
+                            } else {
+                                Some(p.name.clone())
+                            },
+                        })
+                        .unwrap_or_default(),
+                    distance_km: s.distance_km,
+                    duration: Duration::seconds(s.duration_secs),
+                    road_type: RoadType::Urban,
+                    instruction: s.instruction.clone(),
+                    traffic: TrafficLevel::Moderate,
+                })
+                .collect(),
+            memories_on_route: proto
+                .memories_on_route
+                .iter()
+                .map(|m| MemoryOnRoute {
+                    id: m.memory_id.clone(),
+                    content: m.content.clone(),
+                    location: m
+                        .location
+                        .as_ref()
+                        .map(|l| GeoPoint {
+                            latitude: l.latitude,
+                            longitude: l.longitude,
+                            name: None,
+                        })
+                        .unwrap_or_default(),
+                    importance: m.importance,
+                    emotional_tag: m.emotional_tag.clone(),
+                })
+                .collect(),
+            places_on_route: vec![], // Simplified - would need Place conversion
+            suggested_stops: vec![], // Simplified
+            emotional_score: proto.emotional_score,
+            context_notes: proto.context_notes.clone(),
+            traffic_level: TrafficLevel::Moderate,
+            delays: vec![],
+            alternative_available: false,
+        }
+    }
+}
+
+// ============================================================================
 // SZERVER INDÍTÁS
 // ============================================================================
 
@@ -2433,6 +3814,8 @@ pub async fn start_server(addr: &str) -> Result<(), Box<dyn std::error::Error>> 
     println!("    CodeService      - /hope.CodeService/* (Kód elemzés!)");
     println!("    ResonanceService - /hope.ResonanceService/* (🔐 Rezonancia Auth!)");
     println!("    GeoService       - /hope.GeoService/* (🌍 Térbeli kontextus!)");
+    println!("    VoiceService     - /hope.VoiceService/* (🎤 TTS/STT Hang!)");
+    println!("    NavigationService - /hope.NavigationService/* (🗺️ Intelligens navigáció!)");
     println!("\n  Ctrl+C a leállításhoz\n");
 
     Server::builder()
@@ -2445,6 +3828,8 @@ pub async fn start_server(addr: &str) -> Result<(), Box<dyn std::error::Error>> 
         .add_service(CodeServiceServer::from_arc(server.clone()))
         .add_service(ResonanceServiceServer::from_arc(server.clone()))
         .add_service(GeoServiceServer::from_arc(server.clone()))
+        .add_service(VoiceServiceServer::from_arc(server.clone()))
+        .add_service(NavigationServiceServer::from_arc(server.clone()))
         .serve(addr)
         .await?;
 

@@ -831,6 +831,28 @@ service VoiceService {
 
     // Aktuális voice állapot
     rpc GetVoiceStatus(EmptyRequest) returns (VoiceStatusResponse);
+
+    // === Voice Cloning ===
+
+    // Hang klónozása tanító mintákból
+    rpc CloneVoice(CloneVoiceRequest) returns (CloneVoiceResponse);
+
+    // Klónozott hangok listázása
+    rpc GetVoiceClones(GetVoiceClonesRequest) returns (VoiceClonesResponse);
+
+    // === Voice Verification (Resonance integráció) ===
+
+    // Hang aláírás regisztrálása felhasználóhoz
+    rpc RegisterVoice(RegisterVoiceRequest) returns (RegisterVoiceResponse);
+
+    // Hang verifikáció - ki beszél?
+    rpc VerifyVoice(VerifyVoiceRequest) returns (VerifyVoiceResponse);
+
+    // Hang elemzése (aláírás generálás)
+    rpc AnalyzeVoice(AnalyzeVoiceRequest) returns (AnalyzeVoiceResponse);
+
+    // Regisztrált hang aláírások listázása
+    rpc GetVoiceSignatures(GetVoiceSignaturesRequest) returns (VoiceSignaturesResponse);
 }
 
 // === TTS Messages ===
@@ -989,6 +1011,128 @@ message VoiceStatusResponse {
     int32 tts_port = 6;
     int32 stt_port = 7;
     double latency_ms = 8;
+}
+
+// ============================================================================
+// VOICE SIGNATURE - Resonance integráció (Hang biometria)
+// ============================================================================
+
+// VoiceSignature struktúra - hang ujjlenyomat
+message VoiceSignature {
+    string id = 1;                          // UUID
+    double pitch_mean = 2;                  // Átlag hangmagasság (Hz)
+    double pitch_variance = 3;              // Hangmagasság variancia
+    double speaking_rate = 4;               // Beszédsebesség (szó/perc)
+    repeated double pause_pattern = 5;      // Szünet minták (ms)
+    repeated double formant_frequencies = 6; // Formáns frekvenciák [F1, F2, F3, F4]
+    repeated double spectral_envelope = 7;  // Spektrális burkoló
+    repeated double energy_contour = 8;     // Energia kontúr
+    double jitter = 9;                      // Jitter (hangmagasság variáció)
+    double shimmer = 10;                    // Shimmer (amplitúdó variáció)
+    double hnr = 11;                        // Harmonics-to-Noise Ratio
+    Timestamp created_at = 12;
+    int32 sample_count = 13;                // Hány mintából készült
+}
+
+// Voice clone konfiguráció
+message VoiceClone {
+    string id = 1;
+    string name = 2;
+    string base_voice = 3;                  // Alap hang (pl. "berta")
+    VoiceSignature signature = 4;           // Eredeti hang aláírása
+    string status = 5;                      // "processing", "ready", "failed"
+    int32 training_samples = 6;
+    double quality_score = 7;               // 0.0 - 1.0
+    Timestamp created_at = 8;
+}
+
+// === Voice Clone RPC Messages ===
+
+message CloneVoiceRequest {
+    string name = 1;                        // Klón neve
+    repeated bytes audio_samples = 2;       // Tanító audio minták
+    string base_voice = 3;                  // Opcionális alap hang
+}
+
+message CloneVoiceResponse {
+    bool success = 1;
+    string clone_id = 2;
+    VoiceClone clone = 3;
+    string error = 4;
+}
+
+message GetVoiceClonesRequest {
+    int32 limit = 1;
+}
+
+message VoiceClonesResponse {
+    repeated VoiceClone clones = 1;
+    int32 total = 2;
+}
+
+// === Voice Verification (Resonance) RPC Messages ===
+
+message RegisterVoiceRequest {
+    string user_id = 1;                     // Resonance user ID
+    repeated bytes audio_samples = 2;       // Regisztrációs minták
+}
+
+message RegisterVoiceResponse {
+    bool success = 1;
+    string signature_id = 2;
+    VoiceSignature signature = 3;
+    string error = 4;
+}
+
+message VerifyVoiceRequest {
+    bytes audio_data = 1;                   // Ellenőrzendő audio
+    string user_id = 2;                     // Opcionális: specifikus user ellen
+    double threshold = 3;                   // Egyezési küszöb (default: 0.85)
+}
+
+message VerifyVoiceResponse {
+    bool verified = 1;                      // Sikeres verifikáció?
+    double confidence = 2;                  // Bizonyosság (0.0 - 1.0)
+    string matched_user_id = 3;             // Egyező felhasználó
+    string matched_user_name = 4;           // Felhasználó neve
+    VoiceSignature analyzed_signature = 5;  // Elemzett hang aláírás
+    repeated VoiceMatchResult candidates = 6; // További jelöltek
+}
+
+message VoiceMatchResult {
+    string user_id = 1;
+    string user_name = 2;
+    double similarity = 3;
+}
+
+message AnalyzeVoiceRequest {
+    bytes audio_data = 1;                   // Elemezendő audio
+}
+
+message AnalyzeVoiceResponse {
+    bool success = 1;
+    VoiceSignature signature = 2;
+    string error = 3;
+}
+
+message GetVoiceSignaturesRequest {
+    string user_id = 1;                     // Opcionális: specifikus user
+    int32 limit = 2;
+}
+
+message VoiceSignaturesResponse {
+    repeated VoiceSignatureInfo signatures = 1;
+    int32 total = 2;
+}
+
+message VoiceSignatureInfo {
+    string id = 1;
+    string user_id = 2;
+    string user_name = 3;
+    int32 sample_count = 4;
+    double confidence = 5;
+    Timestamp created_at = 6;
+    Timestamp last_verified = 7;
 }
 
 // ============================================================================
@@ -1376,4 +1520,345 @@ message GeoStatsResponse {
     bool work_set = 5;
     double total_distance_km = 6;
     Timestamp last_update = 7;
+}
+
+// ============================================================================
+// NAVIGATION SERVICE - Intelligens útvonaltervezés
+// ============================================================================
+
+service NavigationService {
+    // Útvonal tervezése mood/energia alapján
+    rpc PlanRoute(PlanRouteRequest) returns (PlanRouteResponse);
+
+    // Alternatív útvonalak
+    rpc GetAlternatives(PlanRouteRequest) returns (AlternativeRoutesResponse);
+
+    // Navigáció indítása
+    rpc StartNavigation(StartNavigationRequest) returns (StartNavigationResponse);
+
+    // Pozíció frissítése (streaming)
+    rpc UpdatePosition(stream PositionUpdate) returns (stream NavigationUpdateResponse);
+
+    // Navigáció leállítása
+    rpc StopNavigation(StopNavigationRequest) returns (CompletedRouteResponse);
+
+    // Cél előrejelzés (Symbiosis)
+    rpc PredictDestination(PredictDestinationRequest) returns (PredictDestinationResponse);
+
+    // ETA számítás
+    rpc GetETA(GetETARequest) returns (GetETAResponse);
+
+    // Közeli helyek keresése (útvonalon vagy körben)
+    rpc FindNearby(FindNearbyRequest) returns (FindNearbyResponse);
+
+    // Útvonal kontextus (emlékek, érzelmek az útvonalon)
+    rpc GetRouteContext(GetRouteContextRequest) returns (RouteContextResponse);
+
+    // Indulási idő javaslat
+    rpc SuggestDeparture(SuggestDepartureRequest) returns (SuggestDepartureResponse);
+
+    // Navigációs statisztikák
+    rpc GetNavigationStats(EmptyRequest) returns (NavigationStatsResponse);
+}
+
+// === Route Planning Messages ===
+
+message PlanRouteRequest {
+    // Kiindulópont (ha üres, jelenlegi lokáció)
+    GeoPointProto origin = 1;
+
+    // Úticél
+    GeoPointProto destination = 2;
+
+    // Köztes megállók
+    repeated GeoPointProto waypoints = 3;
+
+    // Kontextus
+    NavigationContextProto context = 4;
+
+    // Preferenciák
+    RoutePreferencesProto preferences = 5;
+}
+
+message GeoPointProto {
+    double latitude = 1;
+    double longitude = 2;
+    string name = 3;        // Opcionális név
+    string place_id = 4;    // Opcionális Place ID
+}
+
+message NavigationContextProto {
+    string current_mood = 1;           // "calm", "stressed", "happy", stb.
+    double energy_level = 2;           // 0.0 - 1.0
+    double time_pressure = 3;          // 0.0 - 1.0
+    string purpose = 4;                // "work", "leisure", "shopping", stb.
+    map<string, double> emotions_21d = 5;  // 21D érzelem vektor
+}
+
+message RoutePreferencesProto {
+    bool avoid_highways = 1;
+    bool avoid_tolls = 2;
+    bool avoid_stairs = 3;
+    bool scenic_route = 4;
+    bool prefer_quiet = 5;
+    double max_walking_km = 6;
+    repeated string accessibility_needs = 7;  // "wheelchair", "visual", stb.
+}
+
+message PlanRouteResponse {
+    bool success = 1;
+    SmartRouteProto route = 2;
+    string error = 3;
+}
+
+message SmartRouteProto {
+    string id = 1;
+    GeoPointProto origin = 2;
+    GeoPointProto destination = 3;
+    double distance_km = 4;
+    int64 duration_secs = 5;
+    repeated RouteSegmentProto segments = 6;
+
+    // Hope layer
+    repeated MemoryOnRouteProto memories_on_route = 7;
+    repeated PlaceOnRouteProto places_on_route = 8;
+    repeated SuggestedStopProto suggested_stops = 9;
+    double emotional_score = 10;           // 0.0 - 1.0
+    repeated string context_notes = 11;    // "Kedvenc kávézód az útvonalon"
+    string traffic_level = 12;             // "low", "medium", "high"
+}
+
+message RouteSegmentProto {
+    GeoPointProto start = 1;
+    GeoPointProto end = 2;
+    double distance_km = 3;
+    int64 duration_secs = 4;
+    string road_type = 5;      // "highway", "local", "pedestrian"
+    string instruction = 6;    // "Fordulj balra a Kossuth utcánál"
+    string traffic_level = 7;
+}
+
+message MemoryOnRouteProto {
+    string memory_id = 1;
+    string content = 2;
+    GeoPointProto location = 3;
+    double importance = 4;
+    string emotional_tag = 5;
+}
+
+message PlaceOnRouteProto {
+    string place_id = 1;
+    string name = 2;
+    string place_type = 3;
+    GeoPointProto location = 4;
+    int64 visit_count = 5;
+    bool is_favorite = 6;
+}
+
+message SuggestedStopProto {
+    string place_id = 1;
+    string name = 2;
+    string reason = 3;          // "favorite", "low_energy", "memory", "need"
+    string description = 4;     // "Kávézz be, fáradt vagy"
+    GeoPointProto location = 5;
+    int64 suggested_duration_mins = 6;
+}
+
+message AlternativeRoutesResponse {
+    repeated SmartRouteProto routes = 1;
+    int32 total = 2;
+}
+
+// === Active Navigation Messages ===
+
+message StartNavigationRequest {
+    string route_id = 1;
+    SmartRouteProto route = 2;     // Vagy teljes route ha nincs ID
+    bool voice_guidance = 3;
+    string language = 4;           // "hu", "en"
+}
+
+message StartNavigationResponse {
+    bool success = 1;
+    string navigation_id = 2;
+    string error = 3;
+}
+
+message PositionUpdate {
+    double latitude = 1;
+    double longitude = 2;
+    double speed_kmh = 3;
+    double heading = 4;           // Irány fokokban (0-360)
+    double accuracy = 5;
+    Timestamp timestamp = 6;
+}
+
+message NavigationUpdateResponse {
+    string status = 1;            // "on_route", "off_route", "arrived", "recalculating"
+    double progress = 2;          // 0.0 - 1.0
+    double remaining_km = 3;
+    int64 remaining_secs = 4;
+    string next_instruction = 5;
+    double distance_to_turn = 6;  // km
+    GeoPointProto current_position = 7;
+
+    // Hope kontextus
+    string nearby_memory = 8;     // Ha közel van emlék
+    string nearby_place = 9;      // Ha közel van kedvenc hely
+    string suggestion = 10;       // "Kávézz be a sarkon"
+}
+
+message StopNavigationRequest {
+    string navigation_id = 1;
+}
+
+message CompletedRouteResponse {
+    bool success = 1;
+    string route_id = 2;
+    double actual_distance_km = 3;
+    int64 actual_duration_secs = 4;
+    repeated GeoPointProto waypoints_visited = 5;
+    int64 stops_made = 6;
+    double average_speed_kmh = 7;
+    Timestamp started_at = 8;
+    Timestamp completed_at = 9;
+}
+
+// === Prediction (Symbiosis) Messages ===
+
+message PredictDestinationRequest {
+    GeoPointProto current_location = 1;   // Ha üres, jelenlegi lokáció
+    Timestamp time = 2;                    // Ha üres, most
+    bool include_reasoning = 3;
+}
+
+message PredictDestinationResponse {
+    bool has_prediction = 1;
+    PredictedDestinationProto prediction = 2;
+    repeated PredictedDestinationProto alternatives = 3;
+}
+
+message PredictedDestinationProto {
+    string place_id = 1;
+    string place_name = 2;
+    GeoPointProto location = 3;
+    double confidence = 4;           // 0.0 - 1.0
+    string reason = 5;               // "daily_routine", "time_pattern", "location_pattern"
+    string reasoning = 6;            // "Hétfő reggel van, általában ilyenkor munkába mész"
+    Timestamp suggested_departure = 7;
+}
+
+// === ETA Messages ===
+
+message GetETARequest {
+    GeoPointProto origin = 1;          // Ha üres, jelenlegi lokáció
+    GeoPointProto destination = 2;
+    bool consider_traffic = 3;
+}
+
+message GetETAResponse {
+    int64 duration_secs = 1;
+    Timestamp arrival_time = 2;
+    string traffic_level = 3;
+    double confidence = 4;
+    double distance_km = 5;
+}
+
+// === Find Nearby Messages ===
+
+message FindNearbyRequest {
+    GeoPointProto location = 1;      // Ha üres, jelenlegi lokáció
+    double radius_km = 2;
+    string category = 3;             // "restaurant", "cafe", "gas_station", stb.
+    bool on_route_only = 4;          // Csak aktuális útvonalon
+    int32 limit = 5;
+}
+
+message FindNearbyResponse {
+    repeated PlaceWithContextProto places = 1;
+    int32 total = 2;
+}
+
+message PlaceWithContextProto {
+    string place_id = 1;
+    string name = 2;
+    string place_type = 3;
+    GeoPointProto location = 4;
+    double distance_km = 5;
+
+    // Hope kontextus
+    int64 visit_count = 6;
+    bool is_favorite = 7;
+    repeated string memories = 8;     // Kapcsolódó emlékek
+    string emotional_history = 9;     // "happy", "neutral", stb.
+    double relevance_score = 10;
+}
+
+// === Route Context Messages ===
+
+message GetRouteContextRequest {
+    string route_id = 1;
+    SmartRouteProto route = 2;       // Vagy teljes route ha nincs ID
+}
+
+message RouteContextResponse {
+    repeated EmotionAtLocationProto emotions = 1;
+    repeated string people_associated = 2;
+    repeated NearbyEventProto events = 3;
+    repeated ContextSuggestionProto suggestions = 4;
+    string overall_emotional_tone = 5;
+}
+
+message EmotionAtLocationProto {
+    GeoPointProto location = 1;
+    string dominant_emotion = 2;
+    double intensity = 3;
+    Timestamp when = 4;
+    string context = 5;              // "Itt mentünk először randizni"
+}
+
+message NearbyEventProto {
+    string event_id = 1;
+    string name = 2;
+    GeoPointProto location = 3;
+    Timestamp starts_at = 4;
+    Timestamp ends_at = 5;
+    string category = 6;
+}
+
+message ContextSuggestionProto {
+    string suggestion = 1;
+    string action = 2;               // "stop", "avoid", "remember"
+    GeoPointProto location = 3;
+    string reason = 4;
+}
+
+// === Departure Suggestion Messages ===
+
+message SuggestDepartureRequest {
+    GeoPointProto destination = 1;
+    Timestamp arrive_by = 2;         // Ha van specifikus időpont
+    bool consider_preparation = 3;   // Hagyjon időt készülődésre
+}
+
+message SuggestDepartureResponse {
+    Timestamp suggested_departure = 1;
+    int64 estimated_duration_secs = 2;
+    string traffic_prediction = 3;
+    string reasoning = 4;            // "A csúcsforgalom miatt korábban indulj"
+    int64 preparation_buffer_mins = 5;
+}
+
+// === Navigation Stats Messages ===
+
+message NavigationStatsResponse {
+    int64 total_routes_planned = 1;
+    int64 total_navigations_completed = 2;
+    double total_distance_km = 3;
+    int64 total_duration_secs = 4;
+    double avg_accuracy_percent = 5;      // ETA pontosság
+    int64 destinations_predicted = 6;
+    double prediction_accuracy = 7;
+    int32 learned_patterns = 8;
+    int32 favorite_destinations = 9;
 }

@@ -50,6 +50,36 @@ impl Default for GeoSource {
     }
 }
 
+impl Default for GeoLocation {
+    fn default() -> Self {
+        Self {
+            latitude: 0.0,
+            longitude: 0.0,
+            altitude: None,
+            accuracy: None,
+            timestamp: Utc::now(),
+            source: GeoSource::Unknown,
+        }
+    }
+}
+
+impl GeoLocation {
+    /// Távolság számítás két pont között (Haversine formula)
+    pub fn distance_to(&self, other: &GeoLocation) -> f64 {
+        let r = 6371.0; // Föld sugara km-ben
+
+        let lat1 = self.latitude.to_radians();
+        let lat2 = other.latitude.to_radians();
+        let dlat = (other.latitude - self.latitude).to_radians();
+        let dlon = (other.longitude - self.longitude).to_radians();
+
+        let a = (dlat / 2.0).sin().powi(2) + lat1.cos() * lat2.cos() * (dlon / 2.0).sin().powi(2);
+        let c = 2.0 * a.sqrt().asin();
+
+        r * c
+    }
+}
+
 /// Hely (ismert lokáció)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Place {

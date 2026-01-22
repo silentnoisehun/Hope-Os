@@ -19,6 +19,7 @@ pub mod geolocation;
 pub mod heart;
 pub mod hebbian;
 pub mod memory;
+pub mod navigation;
 pub mod personality;
 pub mod pollinations;
 pub mod resonance;
@@ -80,8 +81,9 @@ pub use templates::{Template, TemplateCategory, TemplateEngine, TemplateEngineSt
 
 // Voice - Hang
 pub use voice::{
-    AudioChunk, Gender, HopeVoice, ListenRequest, ProsodySettings, SpeakRequest, SpeakResponse,
-    TranscriptionChunk, TranscriptionResponse, VoiceConfig, VoiceEngine, VoiceInfo, WordInfo,
+    AudioChunk, Gender, HopeVoice, ListenRequest, ProsodySettings, STTEngine, SpeakRequest,
+    SpeakResponse, StreamStatus, TTSEngine, TranscriptionChunk, TranscriptionResponse, VoiceClone,
+    VoiceConfig, VoiceInfo, VoiceSignature, VoiceStats,
 };
 
 // Genome - AI Etika
@@ -156,4 +158,13 @@ pub use resonance::{
 // Geolocation - Térbeli kontextus
 pub use geolocation::{
     GeoEngine, GeoLocation, GeoMemory, GeoPrivacySettings, GeoSource, GeoStats, Place, PlaceType,
+};
+
+// Navigation - Intelligens útvonaltervezés
+pub use navigation::{
+    AccessibilityNeed, ActiveNavigation, CompletedRoute, ContextSuggestion, Delay,
+    EmotionAtLocation, GeoArea, GeoPoint, MovementPatterns, NavigationContext, NavigationEngine,
+    NavigationUpdate, NearbyEvent, PlaceWithContext, PredictedDestination, PredictionReason,
+    RoadType, RouteContext, RoutePreferences, RouteSegment, RoutineTrip, SmartRoute, StopReason,
+    SuggestedAction, SuggestedStop, TimeRange, TrafficLevel,
 };

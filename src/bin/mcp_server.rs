@@ -949,6 +949,235 @@ impl McpServer {
                     "required": []
                 }),
             },
+            // ==================== VOICE SERVICE ====================
+            McpTool {
+                name: "hope_speak".to_string(),
+                description: "Text-to-Speech: Convert text to spoken audio. Returns base64 encoded WAV audio.".to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string",
+                            "description": "Text to speak"
+                        },
+                        "voice": {
+                            "type": "string",
+                            "description": "Voice ID: berta, anna, noemi, tamas (Hungarian), ryan, amy, jenny, guy, aria, davis (English)",
+                            "default": "berta"
+                        },
+                        "emotion": {
+                            "type": "string",
+                            "description": "Emotion: joy, sadness, anger, fear, surprise, neutral",
+                            "default": "neutral"
+                        }
+                    },
+                    "required": ["text"]
+                }),
+            },
+            McpTool {
+                name: "hope_voice_status".to_string(),
+                description: "Get voice system status - TTS/STT availability, current voice, latency.".to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }),
+            },
+            McpTool {
+                name: "hope_voices".to_string(),
+                description: "List available voices for TTS with their languages and capabilities.".to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }),
+            },
+            McpTool {
+                name: "hope_set_voice".to_string(),
+                description: "Set the default voice for TTS.".to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "voice": {
+                            "type": "string",
+                            "description": "Voice ID to set as default"
+                        }
+                    },
+                    "required": ["voice"]
+                }),
+            },
+            McpTool {
+                name: "hope_voice_clone".to_string(),
+                description: "Clone a voice from audio samples. Creates a custom voice for TTS.".to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "description": "Name for the cloned voice"
+                        },
+                        "audio_samples_base64": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Array of base64 encoded audio samples (WAV format)"
+                        }
+                    },
+                    "required": ["name", "audio_samples_base64"]
+                }),
+            },
+            McpTool {
+                name: "hope_voice_verify".to_string(),
+                description: "Voice verification - identify or verify a speaker from audio. Resonance integration.".to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "audio_base64": {
+                            "type": "string",
+                            "description": "Base64 encoded audio to verify"
+                        },
+                        "user_id": {
+                            "type": "string",
+                            "description": "Optional: specific user to verify against",
+                            "default": ""
+                        },
+                        "threshold": {
+                            "type": "number",
+                            "description": "Match threshold (0.0-1.0)",
+                            "default": 0.85
+                        }
+                    },
+                    "required": ["audio_base64"]
+                }),
+            },
+            // ==================== NAVIGATION SERVICE ====================
+            McpTool {
+                name: "hope_navigate".to_string(),
+                description: "Plan a smart route from origin to destination, considering mood, energy, and memories on the way.".to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "origin_lat": {
+                            "type": "number",
+                            "description": "Origin latitude"
+                        },
+                        "origin_lon": {
+                            "type": "number",
+                            "description": "Origin longitude"
+                        },
+                        "dest_lat": {
+                            "type": "number",
+                            "description": "Destination latitude"
+                        },
+                        "dest_lon": {
+                            "type": "number",
+                            "description": "Destination longitude"
+                        },
+                        "mood": {
+                            "type": "string",
+                            "description": "Current mood (calm, stressed, happy, tired)",
+                            "default": "neutral"
+                        },
+                        "energy_level": {
+                            "type": "number",
+                            "description": "Energy level 0.0-1.0",
+                            "default": 0.7
+                        }
+                    },
+                    "required": ["dest_lat", "dest_lon"]
+                }),
+            },
+            McpTool {
+                name: "hope_route_alternatives".to_string(),
+                description: "Get alternative routes with different characteristics (faster, scenic, calmer).".to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "origin_lat": {
+                            "type": "number",
+                            "description": "Origin latitude (uses current location if not specified)"
+                        },
+                        "origin_lon": {
+                            "type": "number",
+                            "description": "Origin longitude"
+                        },
+                        "dest_lat": {
+                            "type": "number",
+                            "description": "Destination latitude"
+                        },
+                        "dest_lon": {
+                            "type": "number",
+                            "description": "Destination longitude"
+                        }
+                    },
+                    "required": ["dest_lat", "dest_lon"]
+                }),
+            },
+            McpTool {
+                name: "hope_eta".to_string(),
+                description: "Calculate estimated time of arrival to a destination considering traffic.".to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "dest_lat": {
+                            "type": "number",
+                            "description": "Destination latitude"
+                        },
+                        "dest_lon": {
+                            "type": "number",
+                            "description": "Destination longitude"
+                        }
+                    },
+                    "required": ["dest_lat", "dest_lon"]
+                }),
+            },
+            McpTool {
+                name: "hope_nearby".to_string(),
+                description: "Find nearby places with Hope's context - visit history, memories, favorites.".to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "category": {
+                            "type": "string",
+                            "description": "Place category: restaurant, cafe, gas_station, hospital, park, etc.",
+                            "default": ""
+                        },
+                        "radius_km": {
+                            "type": "number",
+                            "description": "Search radius in km",
+                            "default": 1.0
+                        },
+                        "on_route_only": {
+                            "type": "boolean",
+                            "description": "Only search along current navigation route",
+                            "default": false
+                        },
+                        "limit": {
+                            "type": "integer",
+                            "description": "Maximum results",
+                            "default": 10
+                        }
+                    },
+                    "required": []
+                }),
+            },
+            McpTool {
+                name: "hope_predict_destination".to_string(),
+                description: "Predict where you're going based on patterns, time of day, and location. Symbiosis navigation.".to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }),
+            },
+            McpTool {
+                name: "hope_navigation_stats".to_string(),
+                description: "Get navigation statistics - routes planned, distance traveled, prediction accuracy.".to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }),
+            },
         ]
     }
 
@@ -3435,6 +3664,708 @@ Total distance traveled: {:.2} km
                             if result.home_set { "✅" } else { "❌" },
                             if result.work_set { "✅" } else { "❌" },
                             result.total_distance_km
+                        ),
+                    }],
+                    is_error: None,
+                })
+            }
+
+            // ==================== VOICE SERVICE ====================
+            "hope_speak" => {
+                let text = args.get("text").and_then(|v| v.as_str()).unwrap_or("");
+                let voice = args
+                    .get("voice")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("berta");
+                let emotion = args
+                    .get("emotion")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("neutral");
+
+                if text.is_empty() {
+                    return Err("Text is required".to_string());
+                }
+
+                // Create emotions map if emotion is specified
+                let mut emotions_21d = std::collections::HashMap::new();
+                match emotion {
+                    "joy" => {
+                        emotions_21d.insert("joy".to_string(), 0.8);
+                    }
+                    "sadness" => {
+                        emotions_21d.insert("sadness".to_string(), 0.7);
+                    }
+                    "anger" => {
+                        emotions_21d.insert("anger".to_string(), 0.6);
+                    }
+                    "fear" => {
+                        emotions_21d.insert("fear".to_string(), 0.5);
+                    }
+                    "surprise" => {
+                        emotions_21d.insert("surprise".to_string(), 0.7);
+                    }
+                    _ => {}
+                }
+
+                let result = self
+                    .runtime
+                    .block_on(async {
+                        client
+                            .speak_with_emotion(text, voice, emotion, emotions_21d)
+                            .await
+                    })
+                    .map_err(|e| e.to_string())?;
+
+                // Encode audio as base64
+                let audio_base64 = base64::Engine::encode(
+                    &base64::engine::general_purpose::STANDARD,
+                    &result.audio,
+                );
+
+                Ok(McpToolResult {
+                    content: vec![McpContent {
+                        content_type: "text".to_string(),
+                        text: format!(
+                            r#"🎤 Text-to-Speech Result
+
+Text: "{}"
+Voice: {}
+Emotion: {}
+Duration: {:.2}s
+Format: {}
+Sample rate: {} Hz
+
+Audio (base64): {}...
+
+(Full audio data: {} bytes, {} chars base64)"#,
+                            text,
+                            voice,
+                            emotion,
+                            result.duration,
+                            result.format,
+                            result.sample_rate,
+                            &audio_base64[..audio_base64.len().min(100)],
+                            result.audio.len(),
+                            audio_base64.len()
+                        ),
+                    }],
+                    is_error: None,
+                })
+            }
+
+            "hope_voice_status" => {
+                let result = self
+                    .runtime
+                    .block_on(async { client.voice_status().await })
+                    .map_err(|e| e.to_string())?;
+
+                Ok(McpToolResult {
+                    content: vec![McpContent {
+                        content_type: "text".to_string(),
+                        text: format!(
+                            r#"🎤 Voice System Status
+
+TTS Available: {}
+STT Available: {}
+
+Current Voice: {}
+Current Emotion: {}
+
+TTS Port: {}
+STT Port: {}
+Latency: {:.2}ms
+
+21D Emotion State: {} dimensions active"#,
+                            if result.tts_available { "✅" } else { "❌" },
+                            if result.stt_available { "✅" } else { "❌" },
+                            result.current_voice,
+                            result.current_emotion,
+                            result.tts_port,
+                            result.stt_port,
+                            result.latency_ms,
+                            result.current_emotions_21d.len()
+                        ),
+                    }],
+                    is_error: None,
+                })
+            }
+
+            "hope_voices" => {
+                let result = self
+                    .runtime
+                    .block_on(async { client.get_voices().await })
+                    .map_err(|e| e.to_string())?;
+
+                let voice_list: Vec<String> = result
+                    .voices
+                    .iter()
+                    .map(|v| {
+                        format!(
+                            "- {} ({}): {} [{}] {}",
+                            v.id,
+                            v.language,
+                            v.name,
+                            v.engine,
+                            if v.available { "✅" } else { "❌" }
+                        )
+                    })
+                    .collect();
+
+                Ok(McpToolResult {
+                    content: vec![McpContent {
+                        content_type: "text".to_string(),
+                        text: format!(
+                            r#"🎤 Available Voices
+
+Current: {}
+
+{}
+
+Total: {} voices"#,
+                            result.current_voice,
+                            voice_list.join("\n"),
+                            result.voices.len()
+                        ),
+                    }],
+                    is_error: None,
+                })
+            }
+
+            "hope_set_voice" => {
+                let voice = args.get("voice").and_then(|v| v.as_str()).unwrap_or("");
+
+                if voice.is_empty() {
+                    return Err("Voice ID is required".to_string());
+                }
+
+                let result = self
+                    .runtime
+                    .block_on(async { client.set_voice(voice).await })
+                    .map_err(|e| e.to_string())?;
+
+                Ok(McpToolResult {
+                    content: vec![McpContent {
+                        content_type: "text".to_string(),
+                        text: if result.success {
+                            format!("✅ Voice set to: {}", result.current_voice)
+                        } else {
+                            format!("❌ Failed to set voice: {}", result.message)
+                        },
+                    }],
+                    is_error: if result.success { None } else { Some(true) },
+                })
+            }
+
+            "hope_voice_clone" => {
+                let name = args.get("name").and_then(|v| v.as_str()).unwrap_or("");
+                let samples_base64 = args
+                    .get("audio_samples_base64")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str())
+                            .filter_map(|s| {
+                                base64::Engine::decode(
+                                    &base64::engine::general_purpose::STANDARD,
+                                    s,
+                                )
+                                .ok()
+                            })
+                            .collect::<Vec<Vec<u8>>>()
+                    })
+                    .unwrap_or_default();
+
+                if name.is_empty() {
+                    return Err("Voice name is required".to_string());
+                }
+                if samples_base64.is_empty() {
+                    return Err("At least one audio sample is required".to_string());
+                }
+
+                let result = self
+                    .runtime
+                    .block_on(async { client.clone_voice(name, samples_base64).await })
+                    .map_err(|e| e.to_string())?;
+
+                Ok(McpToolResult {
+                    content: vec![McpContent {
+                        content_type: "text".to_string(),
+                        text: if result.success {
+                            format!(
+                                r#"✅ Voice Cloning Started
+
+Clone ID: {}
+Name: {}
+Status: Processing
+
+The voice clone is being created. Use hope_voices to check when it's ready."#,
+                                result.clone_id, name
+                            )
+                        } else {
+                            format!("❌ Voice cloning failed: {}", result.error)
+                        },
+                    }],
+                    is_error: if result.success { None } else { Some(true) },
+                })
+            }
+
+            "hope_voice_verify" => {
+                let audio_base64 = args
+                    .get("audio_base64")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let user_id = args.get("user_id").and_then(|v| v.as_str());
+                let threshold = args
+                    .get("threshold")
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(0.85);
+
+                if audio_base64.is_empty() {
+                    return Err("Audio data (base64) is required".to_string());
+                }
+
+                let audio_data = base64::Engine::decode(
+                    &base64::engine::general_purpose::STANDARD,
+                    audio_base64,
+                )
+                .map_err(|e| format!("Invalid base64: {}", e))?;
+
+                let result = self
+                    .runtime
+                    .block_on(async { client.verify_voice(&audio_data, user_id, threshold).await })
+                    .map_err(|e| e.to_string())?;
+
+                Ok(McpToolResult {
+                    content: vec![McpContent {
+                        content_type: "text".to_string(),
+                        text: format!(
+                            r#"🔐 Voice Verification Result
+
+Verified: {}
+Confidence: {:.1}%
+Threshold: {:.1}%
+
+Matched User: {}
+User Name: {}
+
+This voice biometric analysis uses:
+- Pitch characteristics
+- Formant frequencies
+- Speaking rate patterns
+- Voice quality metrics (jitter, shimmer, HNR)"#,
+                            if result.verified { "✅ YES" } else { "❌ NO" },
+                            result.confidence * 100.0,
+                            threshold * 100.0,
+                            if result.matched_user_id.is_empty() {
+                                "Unknown"
+                            } else {
+                                &result.matched_user_id
+                            },
+                            if result.matched_user_name.is_empty() {
+                                "Unknown"
+                            } else {
+                                &result.matched_user_name
+                            }
+                        ),
+                    }],
+                    is_error: None,
+                })
+            }
+
+            // ==================== NAVIGATION SERVICE ====================
+            "hope_navigate" => {
+                let origin_lat = args
+                    .get("origin_lat")
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(0.0);
+                let origin_lon = args
+                    .get("origin_lon")
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(0.0);
+                let dest_lat = args.get("dest_lat").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let dest_lon = args.get("dest_lon").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let mood = args
+                    .get("mood")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("neutral");
+                let energy_level = args
+                    .get("energy_level")
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(0.7);
+
+                if dest_lat == 0.0 && dest_lon == 0.0 {
+                    return Err("Destination coordinates are required".to_string());
+                }
+
+                let result = self
+                    .runtime
+                    .block_on(async {
+                        client
+                            .plan_route_with_context(
+                                origin_lat,
+                                origin_lon,
+                                dest_lat,
+                                dest_lon,
+                                mood,
+                                energy_level,
+                                0.5,
+                            )
+                            .await
+                    })
+                    .map_err(|e| e.to_string())?;
+
+                if result.success {
+                    if let Some(route) = result.route {
+                        let stops_info = if route.suggested_stops.is_empty() {
+                            "No suggested stops".to_string()
+                        } else {
+                            route
+                                .suggested_stops
+                                .iter()
+                                .map(|s| format!("  • {} - {}", s.name, s.description))
+                                .collect::<Vec<_>>()
+                                .join("\n")
+                        };
+
+                        let memories_info = if route.memories_on_route.is_empty() {
+                            "No memories along this route".to_string()
+                        } else {
+                            route
+                                .memories_on_route
+                                .iter()
+                                .map(|m| format!("  📍 {}", m.content))
+                                .collect::<Vec<_>>()
+                                .join("\n")
+                        };
+
+                        Ok(McpToolResult {
+                            content: vec![McpContent {
+                                content_type: "text".to_string(),
+                                text: format!(
+                                    r#"🗺️ Smart Route Planned
+
+📍 Distance: {:.2} km
+⏱️ Duration: {} minutes
+🚦 Traffic: {}
+💚 Emotional Score: {:.0}%
+
+Suggested Stops:
+{}
+
+Memories on Route:
+{}
+
+Context Notes:
+{}
+
+"Hope tudja az utat, ami neked a legjobb.""#,
+                                    route.distance_km,
+                                    route.duration_secs / 60,
+                                    route.traffic_level,
+                                    route.emotional_score * 100.0,
+                                    stops_info,
+                                    memories_info,
+                                    if route.context_notes.is_empty() {
+                                        "None".to_string()
+                                    } else {
+                                        route.context_notes.join("\n")
+                                    }
+                                ),
+                            }],
+                            is_error: None,
+                        })
+                    } else {
+                        Err("Route planning succeeded but no route returned".to_string())
+                    }
+                } else {
+                    Err(format!("Route planning failed: {}", result.error))
+                }
+            }
+
+            "hope_route_alternatives" => {
+                let origin_lat = args
+                    .get("origin_lat")
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(0.0);
+                let origin_lon = args
+                    .get("origin_lon")
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(0.0);
+                let dest_lat = args.get("dest_lat").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let dest_lon = args.get("dest_lon").and_then(|v| v.as_f64()).unwrap_or(0.0);
+
+                if dest_lat == 0.0 && dest_lon == 0.0 {
+                    return Err("Destination coordinates are required".to_string());
+                }
+
+                let result = self
+                    .runtime
+                    .block_on(async {
+                        client
+                            .get_route_alternatives(origin_lat, origin_lon, dest_lat, dest_lon)
+                            .await
+                    })
+                    .map_err(|e| e.to_string())?;
+
+                let routes_info: Vec<String> = result
+                    .routes
+                    .iter()
+                    .enumerate()
+                    .map(|(i, r)| {
+                        format!(
+                            "Route {}: {:.2}km, {} min, {} traffic, {:.0}% emotional",
+                            i + 1,
+                            r.distance_km,
+                            r.duration_secs / 60,
+                            r.traffic_level,
+                            r.emotional_score * 100.0
+                        )
+                    })
+                    .collect();
+
+                Ok(McpToolResult {
+                    content: vec![McpContent {
+                        content_type: "text".to_string(),
+                        text: format!(
+                            r#"🗺️ Alternative Routes
+
+{}
+
+Total: {} routes found
+
+Choose based on your current mood and needs!"#,
+                            routes_info.join("\n"),
+                            result.total
+                        ),
+                    }],
+                    is_error: None,
+                })
+            }
+
+            "hope_eta" => {
+                let dest_lat = args.get("dest_lat").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let dest_lon = args.get("dest_lon").and_then(|v| v.as_f64()).unwrap_or(0.0);
+
+                if dest_lat == 0.0 && dest_lon == 0.0 {
+                    return Err("Destination coordinates are required".to_string());
+                }
+
+                let result = self
+                    .runtime
+                    .block_on(async { client.get_eta(dest_lat, dest_lon).await })
+                    .map_err(|e| e.to_string())?;
+
+                let arrival_str = result
+                    .arrival_time
+                    .map(|t| {
+                        chrono::DateTime::from_timestamp(t.seconds, 0)
+                            .map(|dt| dt.format("%H:%M").to_string())
+                            .unwrap_or_else(|| "Unknown".to_string())
+                    })
+                    .unwrap_or_else(|| "Unknown".to_string());
+
+                Ok(McpToolResult {
+                    content: vec![McpContent {
+                        content_type: "text".to_string(),
+                        text: format!(
+                            r#"⏱️ ETA Calculation
+
+Duration: {} minutes
+Arrival Time: {}
+Traffic Level: {}
+Confidence: {:.0}%
+Distance: {:.2} km
+
+"Időben ott leszel.""#,
+                            result.duration_secs / 60,
+                            arrival_str,
+                            result.traffic_level,
+                            result.confidence * 100.0,
+                            result.distance_km
+                        ),
+                    }],
+                    is_error: None,
+                })
+            }
+
+            "hope_nearby" => {
+                let category = args.get("category").and_then(|v| v.as_str());
+                let radius_km = args
+                    .get("radius_km")
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(1.0);
+                let on_route_only = args
+                    .get("on_route_only")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+                let limit = args.get("limit").and_then(|v| v.as_i64()).unwrap_or(10) as i32;
+
+                let result = self
+                    .runtime
+                    .block_on(async {
+                        client
+                            .find_nearby_places(category, radius_km, on_route_only, limit)
+                            .await
+                    })
+                    .map_err(|e| e.to_string())?;
+
+                let places_info: Vec<String> = result
+                    .places
+                    .iter()
+                    .map(|p| {
+                        let star = if p.is_favorite { "⭐" } else { "" };
+                        let visits = if p.visit_count > 0 {
+                            format!(" ({} visits)", p.visit_count)
+                        } else {
+                            String::new()
+                        };
+                        format!(
+                            "{} {} - {:.2}km away{}{}",
+                            star,
+                            p.name,
+                            p.distance_km,
+                            visits,
+                            if !p.memories.is_empty() {
+                                format!(" 📍 {} memories", p.memories.len())
+                            } else {
+                                String::new()
+                            }
+                        )
+                    })
+                    .collect();
+
+                Ok(McpToolResult {
+                    content: vec![McpContent {
+                        content_type: "text".to_string(),
+                        text: format!(
+                            r#"📍 Nearby Places
+
+{}
+
+Found {} places within {:.1}km
+{}
+
+"Hope ismeri a környéket.""#,
+                            if places_info.is_empty() {
+                                "No places found".to_string()
+                            } else {
+                                places_info.join("\n")
+                            },
+                            result.total,
+                            radius_km,
+                            if on_route_only {
+                                "(on current route)"
+                            } else {
+                                ""
+                            }
+                        ),
+                    }],
+                    is_error: None,
+                })
+            }
+
+            "hope_predict_destination" => {
+                let result = self
+                    .runtime
+                    .block_on(async { client.predict_destination().await })
+                    .map_err(|e| e.to_string())?;
+
+                if result.has_prediction {
+                    if let Some(pred) = result.prediction {
+                        let departure_str = pred
+                            .suggested_departure
+                            .map(|t| {
+                                chrono::DateTime::from_timestamp(t.seconds, 0)
+                                    .map(|dt| dt.format("%H:%M").to_string())
+                                    .unwrap_or_else(|| "Unknown".to_string())
+                            })
+                            .unwrap_or_else(|| "Now".to_string());
+
+                        Ok(McpToolResult {
+                            content: vec![McpContent {
+                                content_type: "text".to_string(),
+                                text: format!(
+                                    r#"🔮 Destination Prediction (Symbiosis)
+
+I think you're going to: {}
+Confidence: {:.0}%
+
+Reason: {}
+{}
+
+Suggested Departure: {}
+
+"Hope TUDJA mielőtt mondanád.""#,
+                                    pred.place_name,
+                                    pred.confidence * 100.0,
+                                    pred.reason,
+                                    pred.reasoning,
+                                    departure_str
+                                ),
+                            }],
+                            is_error: None,
+                        })
+                    } else {
+                        Ok(McpToolResult {
+                            content: vec![McpContent {
+                                content_type: "text".to_string(),
+                                text: "🔮 No prediction available yet. I need to learn your patterns first.".to_string(),
+                            }],
+                            is_error: None,
+                        })
+                    }
+                } else {
+                    Ok(McpToolResult {
+                        content: vec![McpContent {
+                            content_type: "text".to_string(),
+                            text: r#"🔮 No Prediction
+
+I don't have enough data to predict your destination yet.
+Keep using navigation, and I'll learn your patterns!
+
+"Hope tanul minden útból.""#
+                                .to_string(),
+                        }],
+                        is_error: None,
+                    })
+                }
+            }
+
+            "hope_navigation_stats" => {
+                let result = self
+                    .runtime
+                    .block_on(async { client.navigation_stats().await })
+                    .map_err(|e| e.to_string())?;
+
+                Ok(McpToolResult {
+                    content: vec![McpContent {
+                        content_type: "text".to_string(),
+                        text: format!(
+                            r#"🗺️ Navigation Statistics
+
+Routes planned: {}
+Navigations completed: {}
+
+Total distance: {:.2} km
+Total time: {} hours
+
+ETA accuracy: {:.1}%
+Destinations predicted: {}
+Prediction accuracy: {:.1}%
+
+Learned patterns: {}
+Favorite destinations: {}
+
+"Minden út tanít valamit.""#,
+                            result.total_routes_planned,
+                            result.total_navigations_completed,
+                            result.total_distance_km,
+                            result.total_duration_secs / 3600,
+                            result.avg_accuracy_percent,
+                            result.destinations_predicted,
+                            result.prediction_accuracy * 100.0,
+                            result.learned_patterns,
+                            result.favorite_destinations
                         ),
                     }],
                     is_error: None,
