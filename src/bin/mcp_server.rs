@@ -826,6 +826,129 @@ impl McpServer {
                     "required": []
                 }),
             },
+            // === GEOLOCATION ===
+            McpTool {
+                name: "hope_location".to_string(),
+                description: "Set or get Hope's current location. Spatial context for memories.".to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "action": {
+                            "type": "string",
+                            "description": "Action: 'get' or 'set'",
+                            "enum": ["get", "set"],
+                            "default": "get"
+                        },
+                        "latitude": {
+                            "type": "number",
+                            "description": "Latitude for set action"
+                        },
+                        "longitude": {
+                            "type": "number",
+                            "description": "Longitude for set action"
+                        },
+                        "source": {
+                            "type": "string",
+                            "description": "Location source: gps, ip, manual",
+                            "default": "manual"
+                        }
+                    },
+                    "required": []
+                }),
+            },
+            McpTool {
+                name: "hope_places".to_string(),
+                description: "Manage Hope's known places - home, work, favorites.".to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "action": {
+                            "type": "string",
+                            "description": "Action: 'list' or 'add'",
+                            "enum": ["list", "add"],
+                            "default": "list"
+                        },
+                        "name": {
+                            "type": "string",
+                            "description": "Place name (for add)"
+                        },
+                        "place_type": {
+                            "type": "string",
+                            "description": "Type: home, work, restaurant, nature, etc.",
+                            "default": "other"
+                        },
+                        "latitude": {
+                            "type": "number",
+                            "description": "Latitude (for add)"
+                        },
+                        "longitude": {
+                            "type": "number",
+                            "description": "Longitude (for add)"
+                        },
+                        "radius": {
+                            "type": "number",
+                            "description": "Radius in meters (for add)",
+                            "default": 100
+                        }
+                    },
+                    "required": []
+                }),
+            },
+            McpTool {
+                name: "hope_home".to_string(),
+                description: "Get or set Hope's home location.".to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "action": {
+                            "type": "string",
+                            "description": "Action: 'get' or 'set'",
+                            "enum": ["get", "set"],
+                            "default": "get"
+                        },
+                        "place_id": {
+                            "type": "string",
+                            "description": "Place ID to set as home"
+                        }
+                    },
+                    "required": []
+                }),
+            },
+            McpTool {
+                name: "hope_distance".to_string(),
+                description: "Calculate distance between two points using Haversine formula.".to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "lat1": {
+                            "type": "number",
+                            "description": "First point latitude"
+                        },
+                        "lon1": {
+                            "type": "number",
+                            "description": "First point longitude"
+                        },
+                        "lat2": {
+                            "type": "number",
+                            "description": "Second point latitude"
+                        },
+                        "lon2": {
+                            "type": "number",
+                            "description": "Second point longitude"
+                        }
+                    },
+                    "required": ["lat1", "lon1", "lat2", "lon2"]
+                }),
+            },
+            McpTool {
+                name: "hope_geo_stats".to_string(),
+                description: "Get geolocation statistics - places, memories, distances traveled.".to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }),
+            },
         ]
     }
 
@@ -3014,6 +3137,304 @@ The more you talk, the better Hope knows you."#,
                             result.match_threshold * 100.0,
                             result.current_session_messages,
                             result.current_session_duration_secs
+                        ),
+                    }],
+                    is_error: None,
+                })
+            }
+
+            // === GEOLOCATION ===
+            "hope_location" => {
+                let action = args.get("action").and_then(|v| v.as_str()).unwrap_or("get");
+
+                match action {
+                    "set" => {
+                        let lat = args
+                            .get("latitude")
+                            .and_then(|v| v.as_f64())
+                            .ok_or("latitude is required for set")?;
+                        let lon = args
+                            .get("longitude")
+                            .and_then(|v| v.as_f64())
+                            .ok_or("longitude is required for set")?;
+                        let source = args
+                            .get("source")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("manual");
+
+                        let result = self
+                            .runtime
+                            .block_on(async { client.set_location(lat, lon, source).await })
+                            .map_err(|e| e.to_string())?;
+
+                        Ok(McpToolResult {
+                            content: vec![McpContent {
+                                content_type: "text".to_string(),
+                                text: format!(
+                                    "🌍 Location Set\n\nLatitude: {:.6}\nLongitude: {:.6}\nSource: {}\nDetected place: {}\nDistance from home: {:.2} km",
+                                    lat, lon, source,
+                                    if result.detected_place.is_empty() { "(unknown)" } else { &result.detected_place },
+                                    result.distance_from_home
+                                ),
+                            }],
+                            is_error: None,
+                        })
+                    }
+                    _ => {
+                        let result = self
+                            .runtime
+                            .block_on(async { client.get_location().await })
+                            .map_err(|e| e.to_string())?;
+
+                        if result.latitude == 0.0 && result.longitude == 0.0 {
+                            Ok(McpToolResult {
+                                content: vec![McpContent {
+                                    content_type: "text".to_string(),
+                                    text:
+                                        "🌍 No location set yet. Use action='set' to set location."
+                                            .to_string(),
+                                }],
+                                is_error: None,
+                            })
+                        } else {
+                            Ok(McpToolResult {
+                                content: vec![McpContent {
+                                    content_type: "text".to_string(),
+                                    text: format!(
+                                        "🌍 Current Location\n\nLatitude: {:.6}\nLongitude: {:.6}\nAltitude: {:.1}m\nAccuracy: {:.1}m\nSource: {}\nCurrent place: {}",
+                                        result.latitude, result.longitude, result.altitude, result.accuracy, result.source,
+                                        if result.current_place.is_empty() { "(unknown)" } else { &result.current_place }
+                                    ),
+                                }],
+                                is_error: None,
+                            })
+                        }
+                    }
+                }
+            }
+
+            "hope_places" => {
+                let action = args
+                    .get("action")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("list");
+
+                match action {
+                    "add" => {
+                        let name = args
+                            .get("name")
+                            .and_then(|v| v.as_str())
+                            .ok_or("name is required for add")?;
+                        let place_type = args
+                            .get("place_type")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("other");
+                        let lat = args
+                            .get("latitude")
+                            .and_then(|v| v.as_f64())
+                            .ok_or("latitude is required for add")?;
+                        let lon = args
+                            .get("longitude")
+                            .and_then(|v| v.as_f64())
+                            .ok_or("longitude is required for add")?;
+                        let radius = args.get("radius").and_then(|v| v.as_f64()).unwrap_or(100.0);
+
+                        let result = self
+                            .runtime
+                            .block_on(async {
+                                client.add_place(name, place_type, lat, lon, radius).await
+                            })
+                            .map_err(|e| e.to_string())?;
+
+                        Ok(McpToolResult {
+                            content: vec![McpContent {
+                                content_type: "text".to_string(),
+                                text: format!(
+                                    "📍 Place Added\n\nID: {}\nName: {}\nType: {}\nLocation: ({:.6}, {:.6})\nRadius: {:.0}m",
+                                    result.place_id, name, place_type, lat, lon, radius
+                                ),
+                            }],
+                            is_error: None,
+                        })
+                    }
+                    _ => {
+                        let result = self
+                            .runtime
+                            .block_on(async { client.list_places().await })
+                            .map_err(|e| e.to_string())?;
+
+                        if result.places.is_empty() {
+                            Ok(McpToolResult {
+                                content: vec![McpContent {
+                                    content_type: "text".to_string(),
+                                    text:
+                                        "📍 No places saved yet. Use action='add' to add a place."
+                                            .to_string(),
+                                }],
+                                is_error: None,
+                            })
+                        } else {
+                            let places_str: Vec<String> = result
+                                .places
+                                .iter()
+                                .map(|p| {
+                                    format!(
+                                        "  📍 {} [{}] - ({:.4}, {:.4}) - {} visits, {} memories",
+                                        p.name,
+                                        p.place_type,
+                                        p.latitude,
+                                        p.longitude,
+                                        p.visit_count,
+                                        p.memory_count
+                                    )
+                                })
+                                .collect();
+
+                            Ok(McpToolResult {
+                                content: vec![McpContent {
+                                    content_type: "text".to_string(),
+                                    text: format!(
+                                        "📍 Known Places ({})\n\n{}",
+                                        result.total,
+                                        places_str.join("\n")
+                                    ),
+                                }],
+                                is_error: None,
+                            })
+                        }
+                    }
+                }
+            }
+
+            "hope_home" => {
+                let action = args.get("action").and_then(|v| v.as_str()).unwrap_or("get");
+
+                match action {
+                    "set" => {
+                        let place_id = args
+                            .get("place_id")
+                            .and_then(|v| v.as_str())
+                            .ok_or("place_id is required for set")?;
+
+                        let result = self
+                            .runtime
+                            .block_on(async { client.set_home(place_id).await })
+                            .map_err(|e| e.to_string())?;
+
+                        Ok(McpToolResult {
+                            content: vec![McpContent {
+                                content_type: "text".to_string(),
+                                text: format!(
+                                    "🏠 Home {}\n\n{}",
+                                    if result.success { "Set" } else { "NOT Set" },
+                                    result.message
+                                ),
+                            }],
+                            is_error: None,
+                        })
+                    }
+                    _ => {
+                        let result = self
+                            .runtime
+                            .block_on(async { client.get_home().await })
+                            .map_err(|e| e.to_string())?;
+
+                        if !result.found {
+                            Ok(McpToolResult {
+                                content: vec![McpContent {
+                                    content_type: "text".to_string(),
+                                    text: "🏠 No home set yet. Use action='set' with a place_id."
+                                        .to_string(),
+                                }],
+                                is_error: None,
+                            })
+                        } else if let Some(p) = result.place {
+                            Ok(McpToolResult {
+                                content: vec![McpContent {
+                                    content_type: "text".to_string(),
+                                    text: format!(
+                                        "🏠 Home\n\nName: {}\nLocation: ({:.6}, {:.6})\nRadius: {:.0}m\nVisits: {}\nMemories: {}",
+                                        p.name, p.latitude, p.longitude, p.radius, p.visit_count, p.memory_count
+                                    ),
+                                }],
+                                is_error: None,
+                            })
+                        } else {
+                            Ok(McpToolResult {
+                                content: vec![McpContent {
+                                    content_type: "text".to_string(),
+                                    text: "🏠 Home not found.".to_string(),
+                                }],
+                                is_error: None,
+                            })
+                        }
+                    }
+                }
+            }
+
+            "hope_distance" => {
+                let lat1 = args
+                    .get("lat1")
+                    .and_then(|v| v.as_f64())
+                    .ok_or("lat1 is required")?;
+                let lon1 = args
+                    .get("lon1")
+                    .and_then(|v| v.as_f64())
+                    .ok_or("lon1 is required")?;
+                let lat2 = args
+                    .get("lat2")
+                    .and_then(|v| v.as_f64())
+                    .ok_or("lat2 is required")?;
+                let lon2 = args
+                    .get("lon2")
+                    .and_then(|v| v.as_f64())
+                    .ok_or("lon2 is required")?;
+
+                let result = self
+                    .runtime
+                    .block_on(async { client.get_distance(lat1, lon1, lat2, lon2).await })
+                    .map_err(|e| e.to_string())?;
+
+                Ok(McpToolResult {
+                    content: vec![McpContent {
+                        content_type: "text".to_string(),
+                        text: format!(
+                            "📏 Distance\n\nFrom: ({:.6}, {:.6})\nTo: ({:.6}, {:.6})\n\nDistance: {:.2} km ({:.0} m)\n\nUsing Haversine formula (great-circle distance)",
+                            lat1, lon1, lat2, lon2, result.distance_km, result.distance_meters
+                        ),
+                    }],
+                    is_error: None,
+                })
+            }
+
+            "hope_geo_stats" => {
+                let result = self
+                    .runtime
+                    .block_on(async { client.geo_stats().await })
+                    .map_err(|e| e.to_string())?;
+
+                Ok(McpToolResult {
+                    content: vec![McpContent {
+                        content_type: "text".to_string(),
+                        text: format!(
+                            r#"🌍 Geolocation Statistics
+
+Total locations tracked: {}
+Known places: {}
+Geo-tagged memories: {}
+
+Home set: {}
+Work set: {}
+
+Total distance traveled: {:.2} km
+
+"Minden emléknek helye van.""#,
+                            result.total_locations,
+                            result.total_places,
+                            result.total_geo_memories,
+                            if result.home_set { "✅" } else { "❌" },
+                            if result.work_set { "✅" } else { "❌" },
+                            result.total_distance_km
                         ),
                     }],
                     is_error: None,

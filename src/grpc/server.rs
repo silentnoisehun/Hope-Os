@@ -17,6 +17,8 @@ use super::proto::{
     cognitive_service_server::{CognitiveService, CognitiveServiceServer},
     // GenomeService
     genome_service_server::{GenomeService, GenomeServiceServer},
+    // GeoService
+    geo_service_server::{GeoService, GeoServiceServer},
     // HopeService
     hope_service_server::{HopeService, HopeServiceServer},
     // MemoryService
@@ -27,6 +29,11 @@ use super::proto::{
     skill_service_server::{SkillService, SkillServiceServer},
     // VisionService
     vision_service_server::{VisionService, VisionServiceServer},
+    // Geo types
+    AddGeoMemoryRequest,
+    AddGeoMemoryResponse,
+    AddPlaceRequest,
+    AddPlaceResponse,
     // Code
     AnalyzeRequest,
     AnalyzeResponse,
@@ -54,20 +61,32 @@ use super::proto::{
     GenerateResponse,
     // Genome
     GenomeStatusResponse,
+    // Geo
+    GeoLocationResponse,
+    GeoMemoriesResponse,
+    GeoMemoryInfo,
+    GeoStatsResponse,
     GetAuditTrailRequest,
     GetCodeBlockRequest,
+    GetDistanceRequest,
+    GetDistanceResponse,
+    GetNearbyMemoriesRequest,
     GetSkillRequest,
     GetVisualMemoriesRequest,
     HeartbeatResponse,
     ImageAnalysis,
     InvokeSkillRequest,
     InvokeSkillResponse,
+    ListPlacesRequest,
+    ListPlacesResponse,
     // Skill
     ListSkillsRequest,
     ListSkillsResponse,
     ListTemplatesRequest,
     ListTemplatesResponse,
     MemoryItem,
+    PlaceInfo,
+    PlaceResponse,
     RecallRequest,
     RecallResponse,
     RegisterUserRequest,
@@ -86,6 +105,10 @@ use super::proto::{
     // Attention
     SetFocusRequest,
     SetFocusResponse,
+    SetHomeRequest,
+    SetHomeResponse,
+    SetLocationRequest,
+    SetLocationResponse,
     SignDecisionRequest,
     SignDecisionResponse,
     SkillInfo,
@@ -108,6 +131,7 @@ use super::proto::{
 use crate::core::HopeRegistry;
 use crate::data::CodeGraph;
 use crate::modules::attention::{AttentionEngine, AttentionMode};
+use crate::modules::geolocation::{GeoEngine, GeoLocation, GeoSource, Place, PlaceType};
 use crate::modules::resonance::{ResonanceEngine, SessionData, UserInput};
 use crate::modules::{HopeGenome, HopeHeart, HopeMemory, HopeSoul, SkillRegistry, VisionEngine};
 
@@ -191,6 +215,8 @@ pub struct HopeGrpcServer {
     code_blocks: Arc<RwLock<Vec<InternalCodeBlock>>>,
     /// Resonance Engine - Rezonancia alapú autentikáció
     resonance: Arc<ResonanceEngine>,
+    /// Geo Engine - Térbeli kontextus
+    geo: Arc<GeoEngine>,
 }
 
 impl HopeGrpcServer {
@@ -232,6 +258,10 @@ impl HopeGrpcServer {
         let resonance = ResonanceEngine::new();
         println!("  ResonanceEngine: rezonancia autentikáció aktív");
 
+        // Geo Engine létrehozása (térbeli kontextus)
+        let geo = GeoEngine::new();
+        println!("  GeoEngine: térbeli kontextus aktív");
+
         // Alapértelmezett érzelmek
         let mut emotions = HashMap::new();
         emotions.insert("curiosity".to_string(), 0.8);
@@ -250,6 +280,7 @@ impl HopeGrpcServer {
             genome: Arc::new(RwLock::new(genome)),
             code_blocks: Arc::new(RwLock::new(Vec::new())),
             resonance: Arc::new(resonance),
+            geo: Arc::new(geo),
         })
     }
 
@@ -1896,6 +1927,470 @@ impl ResonanceService for HopeGrpcServer {
 }
 
 // ============================================================================
+// GEO SERVICE IMPLEMENTÁCIÓ - Térbeli kontextus
+// ============================================================================
+
+#[tonic::async_trait]
+impl GeoService for HopeGrpcServer {
+    /// SetLocation - Jelenlegi lokáció beállítása
+    async fn set_location(
+        &self,
+        request: Request<SetLocationRequest>,
+    ) -> Result<Response<SetLocationResponse>, Status> {
+        let req = request.into_inner();
+        println!(
+            "🌍 HOPE: SetLocation kérés: {}, {}",
+            req.latitude, req.longitude
+        );
+
+        let source = match req.source.to_lowercase().as_str() {
+            "gps" => GeoSource::Gps,
+            "ip" => GeoSource::IpBased,
+            "manual" => GeoSource::Manual,
+            "network" => GeoSource::Network,
+            _ => GeoSource::Unknown,
+        };
+
+        let location = GeoLocation {
+            latitude: req.latitude,
+            longitude: req.longitude,
+            altitude: if req.altitude > 0.0 {
+                Some(req.altitude)
+            } else {
+                None
+            },
+            accuracy: if req.accuracy > 0.0 {
+                Some(req.accuracy)
+            } else {
+                None
+            },
+            timestamp: chrono::Utc::now(),
+            source,
+        };
+
+        match self.geo.set_current_location(location.clone()).await {
+            Ok(()) => {
+                // Távolság az otthontól
+                let distance_from_home =
+                    self.geo.distance_from_home(&location).await.unwrap_or(0.0);
+
+                // Detektált hely neve
+                let places = self.geo.list_places().await;
+                let detected_place = places
+                    .iter()
+                    .find(|p| GeoEngine::distance(&location, &p.location) * 1000.0 <= p.radius)
+                    .map(|p| p.name.clone())
+                    .unwrap_or_default();
+
+                Ok(Response::new(SetLocationResponse {
+                    success: true,
+                    detected_place,
+                    distance_from_home,
+                }))
+            }
+            Err(e) => Ok(Response::new(SetLocationResponse {
+                success: false,
+                detected_place: e,
+                distance_from_home: 0.0,
+            })),
+        }
+    }
+
+    /// GetLocation - Jelenlegi lokáció lekérdezése
+    async fn get_location(
+        &self,
+        _request: Request<EmptyRequest>,
+    ) -> Result<Response<GeoLocationResponse>, Status> {
+        match self.geo.get_current_location().await {
+            Some(loc) => {
+                let places = self.geo.list_places().await;
+                let current_place = places
+                    .iter()
+                    .find(|p| GeoEngine::distance(&loc, &p.location) * 1000.0 <= p.radius)
+                    .map(|p| p.name.clone())
+                    .unwrap_or_default();
+
+                let source_str = match loc.source {
+                    GeoSource::Gps => "gps",
+                    GeoSource::IpBased => "ip",
+                    GeoSource::Manual => "manual",
+                    GeoSource::Network => "network",
+                    GeoSource::Inferred => "inferred",
+                    GeoSource::Unknown => "unknown",
+                };
+
+                Ok(Response::new(GeoLocationResponse {
+                    latitude: loc.latitude,
+                    longitude: loc.longitude,
+                    altitude: loc.altitude.unwrap_or(0.0),
+                    accuracy: loc.accuracy.unwrap_or(0.0),
+                    source: source_str.to_string(),
+                    timestamp: Some(Timestamp {
+                        seconds: loc.timestamp.timestamp(),
+                        nanos: 0,
+                    }),
+                    current_place,
+                }))
+            }
+            None => Ok(Response::new(GeoLocationResponse {
+                latitude: 0.0,
+                longitude: 0.0,
+                altitude: 0.0,
+                accuracy: 0.0,
+                source: "unknown".to_string(),
+                timestamp: None,
+                current_place: String::new(),
+            })),
+        }
+    }
+
+    /// AddPlace - Hely hozzáadása
+    async fn add_place(
+        &self,
+        request: Request<AddPlaceRequest>,
+    ) -> Result<Response<AddPlaceResponse>, Status> {
+        let req = request.into_inner();
+        println!("🌍 HOPE: AddPlace kérés: {}", req.name);
+
+        let place = Place {
+            id: uuid::Uuid::nil(), // Will be generated
+            name: req.name,
+            place_type: PlaceType::from_str(&req.place_type),
+            location: GeoLocation {
+                latitude: req.latitude,
+                longitude: req.longitude,
+                altitude: None,
+                accuracy: None,
+                timestamp: chrono::Utc::now(),
+                source: GeoSource::Manual,
+            },
+            radius: req.radius,
+            address: if req.address.is_empty() {
+                None
+            } else {
+                Some(req.address)
+            },
+            country_code: if req.country_code.is_empty() {
+                None
+            } else {
+                Some(req.country_code)
+            },
+            visit_count: 0,
+            last_visit: None,
+            first_visit: chrono::Utc::now(),
+            memory_count: 0,
+            emotional_associations: HashMap::new(),
+            metadata: HashMap::new(),
+        };
+
+        let place_id = self.geo.add_place(place).await;
+
+        Ok(Response::new(AddPlaceResponse {
+            place_id: place_id.to_string(),
+            success: true,
+        }))
+    }
+
+    /// ListPlaces - Helyek listázása
+    async fn list_places(
+        &self,
+        request: Request<ListPlacesRequest>,
+    ) -> Result<Response<ListPlacesResponse>, Status> {
+        let req = request.into_inner();
+
+        let all_places = self.geo.list_places().await;
+        let limit = if req.limit > 0 {
+            req.limit as usize
+        } else {
+            100
+        };
+
+        // Szűrés
+        let mut filtered: Vec<_> = all_places
+            .into_iter()
+            .filter(|p| {
+                if !req.place_type.is_empty() {
+                    p.place_type.to_string() == req.place_type
+                } else {
+                    true
+                }
+            })
+            .filter(|p| {
+                // Közeli helyek szűrése ha van koordináta megadva
+                if req.nearby_lat != 0.0 && req.nearby_lon != 0.0 && req.radius_km > 0.0 {
+                    let search_loc = GeoLocation {
+                        latitude: req.nearby_lat,
+                        longitude: req.nearby_lon,
+                        altitude: None,
+                        accuracy: None,
+                        timestamp: chrono::Utc::now(),
+                        source: GeoSource::Manual,
+                    };
+                    GeoEngine::distance(&search_loc, &p.location) <= req.radius_km
+                } else {
+                    true
+                }
+            })
+            .take(limit)
+            .collect();
+
+        // Konvertálás proto típusra
+        let places: Vec<PlaceInfo> = filtered
+            .iter()
+            .map(|p| PlaceInfo {
+                id: p.id.to_string(),
+                name: p.name.clone(),
+                place_type: p.place_type.to_string(),
+                latitude: p.location.latitude,
+                longitude: p.location.longitude,
+                radius: p.radius,
+                address: p.address.clone().unwrap_or_default(),
+                visit_count: p.visit_count as i64,
+                last_visit: p.last_visit.map(|dt| Timestamp {
+                    seconds: dt.timestamp(),
+                    nanos: 0,
+                }),
+                memory_count: p.memory_count as i64,
+            })
+            .collect();
+
+        let total = places.len() as i32;
+
+        Ok(Response::new(ListPlacesResponse { places, total }))
+    }
+
+    /// SetHome - Otthon beállítása
+    async fn set_home(
+        &self,
+        request: Request<SetHomeRequest>,
+    ) -> Result<Response<SetHomeResponse>, Status> {
+        let req = request.into_inner();
+        println!("🏠 HOPE: SetHome kérés: {}", req.place_id);
+
+        let place_id = req
+            .place_id
+            .parse::<uuid::Uuid>()
+            .map_err(|_| Status::invalid_argument("Invalid place_id"))?;
+
+        match self.geo.set_home(place_id).await {
+            Ok(()) => Ok(Response::new(SetHomeResponse {
+                success: true,
+                message: "Otthon beállítva".to_string(),
+            })),
+            Err(e) => Ok(Response::new(SetHomeResponse {
+                success: false,
+                message: e,
+            })),
+        }
+    }
+
+    /// GetHome - Otthon lekérdezése
+    async fn get_home(
+        &self,
+        _request: Request<EmptyRequest>,
+    ) -> Result<Response<PlaceResponse>, Status> {
+        match self.geo.get_home().await {
+            Some(p) => Ok(Response::new(PlaceResponse {
+                place: Some(PlaceInfo {
+                    id: p.id.to_string(),
+                    name: p.name.clone(),
+                    place_type: p.place_type.to_string(),
+                    latitude: p.location.latitude,
+                    longitude: p.location.longitude,
+                    radius: p.radius,
+                    address: p.address.clone().unwrap_or_default(),
+                    visit_count: p.visit_count as i64,
+                    last_visit: p.last_visit.map(|dt| Timestamp {
+                        seconds: dt.timestamp(),
+                        nanos: 0,
+                    }),
+                    memory_count: p.memory_count as i64,
+                }),
+                found: true,
+            })),
+            None => Ok(Response::new(PlaceResponse {
+                place: None,
+                found: false,
+            })),
+        }
+    }
+
+    /// GetDistance - Távolság számítás
+    async fn get_distance(
+        &self,
+        request: Request<GetDistanceRequest>,
+    ) -> Result<Response<GetDistanceResponse>, Status> {
+        let req = request.into_inner();
+
+        // Ha place_id-k vannak megadva
+        if !req.from_place_id.is_empty() && !req.to_place_id.is_empty() {
+            let from_id = req
+                .from_place_id
+                .parse::<uuid::Uuid>()
+                .map_err(|_| Status::invalid_argument("Invalid from_place_id"))?;
+            let to_id = req
+                .to_place_id
+                .parse::<uuid::Uuid>()
+                .map_err(|_| Status::invalid_argument("Invalid to_place_id"))?;
+
+            if let Some(distance) = self.geo.distance_between_places(from_id, to_id).await {
+                let from_place = self.geo.get_place(from_id).await;
+                let to_place = self.geo.get_place(to_id).await;
+
+                return Ok(Response::new(GetDistanceResponse {
+                    distance_km: distance,
+                    distance_meters: distance * 1000.0,
+                    from_name: from_place.map(|p| p.name).unwrap_or_default(),
+                    to_name: to_place.map(|p| p.name).unwrap_or_default(),
+                }));
+            }
+        }
+
+        // Ha from_current = true
+        if req.from_current {
+            if let Some(current) = self.geo.get_current_location().await {
+                let to_loc = GeoLocation {
+                    latitude: req.lat2,
+                    longitude: req.lon2,
+                    altitude: None,
+                    accuracy: None,
+                    timestamp: chrono::Utc::now(),
+                    source: GeoSource::Manual,
+                };
+
+                let distance = GeoEngine::distance(&current, &to_loc);
+
+                return Ok(Response::new(GetDistanceResponse {
+                    distance_km: distance,
+                    distance_meters: distance * 1000.0,
+                    from_name: "Jelenlegi helyzet".to_string(),
+                    to_name: String::new(),
+                }));
+            }
+        }
+
+        // Egyébként koordinátákból számol
+        let distance = GeoEngine::haversine_distance(req.lat1, req.lon1, req.lat2, req.lon2);
+
+        Ok(Response::new(GetDistanceResponse {
+            distance_km: distance,
+            distance_meters: distance * 1000.0,
+            from_name: String::new(),
+            to_name: String::new(),
+        }))
+    }
+
+    /// AddGeoMemory - Geo-emlék hozzáadása
+    async fn add_geo_memory(
+        &self,
+        request: Request<AddGeoMemoryRequest>,
+    ) -> Result<Response<AddGeoMemoryResponse>, Status> {
+        let req = request.into_inner();
+        println!("🌍 HOPE: AddGeoMemory kérés: {}", req.memory_id);
+
+        let memory_id = req
+            .memory_id
+            .parse::<uuid::Uuid>()
+            .map_err(|_| Status::invalid_argument("Invalid memory_id"))?;
+
+        let location = GeoLocation {
+            latitude: req.latitude,
+            longitude: req.longitude,
+            altitude: None,
+            accuracy: None,
+            timestamp: chrono::Utc::now(),
+            source: GeoSource::Manual,
+        };
+
+        self.geo
+            .add_geo_memory(memory_id, location.clone(), req.importance)
+            .await;
+
+        // Keressük meg a helyet
+        let places = self.geo.list_places().await;
+        let place_name = places
+            .iter()
+            .find(|p| GeoEngine::distance(&location, &p.location) * 1000.0 <= p.radius)
+            .map(|p| p.name.clone())
+            .unwrap_or_default();
+
+        Ok(Response::new(AddGeoMemoryResponse {
+            success: true,
+            place_name,
+        }))
+    }
+
+    /// GetNearbyMemories - Közeli emlékek keresése
+    async fn get_nearby_memories(
+        &self,
+        request: Request<GetNearbyMemoriesRequest>,
+    ) -> Result<Response<GeoMemoriesResponse>, Status> {
+        let req = request.into_inner();
+
+        let location = GeoLocation {
+            latitude: req.latitude,
+            longitude: req.longitude,
+            altitude: None,
+            accuracy: None,
+            timestamp: chrono::Utc::now(),
+            source: GeoSource::Manual,
+        };
+
+        let limit = if req.limit > 0 {
+            req.limit as usize
+        } else {
+            10
+        };
+        let radius = if req.radius_km > 0.0 {
+            req.radius_km
+        } else {
+            1.0
+        };
+
+        let memories = self.geo.get_memories_nearby(&location, radius).await;
+
+        let result: Vec<GeoMemoryInfo> = memories
+            .into_iter()
+            .take(limit)
+            .map(|m| GeoMemoryInfo {
+                memory_id: m.memory_id.to_string(),
+                latitude: m.location.latitude,
+                longitude: m.location.longitude,
+                place_name: m.place_name.unwrap_or_default(),
+                importance: m.importance,
+                created_at: Some(Timestamp {
+                    seconds: m.created_at.timestamp(),
+                    nanos: 0,
+                }),
+            })
+            .collect();
+
+        Ok(Response::new(GeoMemoriesResponse { memories: result }))
+    }
+
+    /// GetGeoStats - Statisztikák
+    async fn get_geo_stats(
+        &self,
+        _request: Request<EmptyRequest>,
+    ) -> Result<Response<GeoStatsResponse>, Status> {
+        let stats = self.geo.get_stats().await;
+
+        Ok(Response::new(GeoStatsResponse {
+            total_locations: stats.total_locations as i64,
+            total_places: stats.total_places as i64,
+            total_geo_memories: stats.total_geo_memories as i64,
+            home_set: stats.home_set,
+            work_set: stats.work_set,
+            total_distance_km: stats.total_distance_km,
+            last_update: stats.last_update.map(|dt| Timestamp {
+                seconds: dt.timestamp(),
+                nanos: 0,
+            }),
+        }))
+    }
+}
+
+// ============================================================================
 // SZERVER INDÍTÁS
 // ============================================================================
 
@@ -1937,6 +2432,7 @@ pub async fn start_server(addr: &str) -> Result<(), Box<dyn std::error::Error>> 
     println!("    GenomeService    - /hope.GenomeService/* (7 etikai alapelv!)");
     println!("    CodeService      - /hope.CodeService/* (Kód elemzés!)");
     println!("    ResonanceService - /hope.ResonanceService/* (🔐 Rezonancia Auth!)");
+    println!("    GeoService       - /hope.GeoService/* (🌍 Térbeli kontextus!)");
     println!("\n  Ctrl+C a leállításhoz\n");
 
     Server::builder()
@@ -1948,6 +2444,7 @@ pub async fn start_server(addr: &str) -> Result<(), Box<dyn std::error::Error>> 
         .add_service(GenomeServiceServer::from_arc(server.clone()))
         .add_service(CodeServiceServer::from_arc(server.clone()))
         .add_service(ResonanceServiceServer::from_arc(server.clone()))
+        .add_service(GeoServiceServer::from_arc(server.clone()))
         .serve(addr)
         .await?;
 

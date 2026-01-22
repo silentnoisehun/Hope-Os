@@ -1192,3 +1192,188 @@ message DetectAnomalyResponse {
     double deviation = 3;
     string description = 4;
 }
+
+// ============================================================================
+// GEO SERVICE - Térbeli kontextus
+// ============================================================================
+
+service GeoService {
+    // Jelenlegi lokáció beállítása
+    rpc SetLocation(SetLocationRequest) returns (SetLocationResponse);
+
+    // Jelenlegi lokáció lekérdezése
+    rpc GetLocation(EmptyRequest) returns (GeoLocationResponse);
+
+    // Hely hozzáadása
+    rpc AddPlace(AddPlaceRequest) returns (AddPlaceResponse);
+
+    // Helyek listázása
+    rpc ListPlaces(ListPlacesRequest) returns (ListPlacesResponse);
+
+    // Otthon beállítása
+    rpc SetHome(SetHomeRequest) returns (SetHomeResponse);
+
+    // Otthon lekérdezése
+    rpc GetHome(EmptyRequest) returns (PlaceResponse);
+
+    // Távolság számítás
+    rpc GetDistance(GetDistanceRequest) returns (GetDistanceResponse);
+
+    // Geo-emlék hozzáadása
+    rpc AddGeoMemory(AddGeoMemoryRequest) returns (AddGeoMemoryResponse);
+
+    // Közeli emlékek keresése
+    rpc GetNearbyMemories(GetNearbyMemoriesRequest) returns (GeoMemoriesResponse);
+
+    // Statisztikák
+    rpc GetGeoStats(EmptyRequest) returns (GeoStatsResponse);
+}
+
+// === Location Messages ===
+
+message SetLocationRequest {
+    double latitude = 1;
+    double longitude = 2;
+    double altitude = 3;      // Opcionális
+    double accuracy = 4;      // Opcionális, méterben
+    string source = 5;        // "gps", "ip", "manual", "network"
+}
+
+message SetLocationResponse {
+    bool success = 1;
+    string detected_place = 2;  // Ha ismert helyen vagyunk
+    double distance_from_home = 3;  // km
+}
+
+message GeoLocationResponse {
+    double latitude = 1;
+    double longitude = 2;
+    double altitude = 3;
+    double accuracy = 4;
+    string source = 5;
+    Timestamp timestamp = 6;
+    string current_place = 7;   // Ha ismert helyen vagyunk
+}
+
+// === Place Messages ===
+
+message AddPlaceRequest {
+    string name = 1;
+    string place_type = 2;    // "home", "work", "restaurant", stb.
+    double latitude = 3;
+    double longitude = 4;
+    double radius = 5;        // Méterben
+    string address = 6;       // Opcionális
+    string country_code = 7;  // Opcionális, ISO 3166-1 alpha-2
+}
+
+message AddPlaceResponse {
+    string place_id = 1;
+    bool success = 2;
+}
+
+message ListPlacesRequest {
+    string place_type = 1;    // Szűrés típus szerint (opcionális)
+    double nearby_lat = 2;    // Közeli helyek keresése
+    double nearby_lon = 3;
+    double radius_km = 4;     // Keresési sugár
+    int32 limit = 5;
+}
+
+message ListPlacesResponse {
+    repeated PlaceInfo places = 1;
+    int32 total = 2;
+}
+
+message PlaceInfo {
+    string id = 1;
+    string name = 2;
+    string place_type = 3;
+    double latitude = 4;
+    double longitude = 5;
+    double radius = 6;
+    string address = 7;
+    int64 visit_count = 8;
+    Timestamp last_visit = 9;
+    int64 memory_count = 10;
+}
+
+message SetHomeRequest {
+    string place_id = 1;
+}
+
+message SetHomeResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+message PlaceResponse {
+    PlaceInfo place = 1;
+    bool found = 2;
+}
+
+// === Distance Messages ===
+
+message GetDistanceRequest {
+    // Két pont közötti távolság VAGY pont és hely közötti
+    double lat1 = 1;
+    double lon1 = 2;
+    double lat2 = 3;
+    double lon2 = 4;
+    string from_place_id = 5;   // Alternatíva: helyből
+    string to_place_id = 6;     // Alternatíva: helybe
+    bool from_current = 7;      // Jelenlegi lokációból
+}
+
+message GetDistanceResponse {
+    double distance_km = 1;
+    double distance_meters = 2;
+    string from_name = 3;       // Ha helyből számoltunk
+    string to_name = 4;         // Ha helybe számoltunk
+}
+
+// === Geo Memory Messages ===
+
+message AddGeoMemoryRequest {
+    string memory_id = 1;     // Hope memory ID
+    double latitude = 2;
+    double longitude = 3;
+    double importance = 4;
+}
+
+message AddGeoMemoryResponse {
+    bool success = 1;
+    string place_name = 2;    // Ha ismert helyen volt
+}
+
+message GetNearbyMemoriesRequest {
+    double latitude = 1;
+    double longitude = 2;
+    double radius_km = 3;
+    int32 limit = 4;
+}
+
+message GeoMemoriesResponse {
+    repeated GeoMemoryInfo memories = 1;
+}
+
+message GeoMemoryInfo {
+    string memory_id = 1;
+    double latitude = 2;
+    double longitude = 3;
+    string place_name = 4;
+    double importance = 5;
+    Timestamp created_at = 6;
+}
+
+// === Stats ===
+
+message GeoStatsResponse {
+    int64 total_locations = 1;
+    int64 total_places = 2;
+    int64 total_geo_memories = 3;
+    bool home_set = 4;
+    bool work_set = 5;
+    double total_distance_km = 6;
+    Timestamp last_update = 7;
+}

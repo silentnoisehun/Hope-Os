@@ -15,6 +15,7 @@ pub mod distributed;
 pub mod dream;
 pub mod emotion_engine;
 pub mod genome;
+pub mod geolocation;
 pub mod heart;
 pub mod hebbian;
 pub mod memory;
@@ -150,4 +151,9 @@ pub use collective::{
 pub use resonance::{
     Anomaly, PatternType, PunctuationPattern, ResonanceEngine, ResonanceMatch, ResonanceProfile,
     ResonanceStatus, ResonanceWeights, SessionData, UserInput,
+};
+
+// Geolocation - Térbeli kontextus
+pub use geolocation::{
+    GeoEngine, GeoLocation, GeoMemory, GeoPrivacySettings, GeoSource, GeoStats, Place, PlaceType,
 };

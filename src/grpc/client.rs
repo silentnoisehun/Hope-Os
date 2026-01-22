@@ -14,10 +14,10 @@ use super::proto;
 use proto::{
     action_service_client::ActionServiceClient, code_service_client::CodeServiceClient,
     cognitive_service_client::CognitiveServiceClient, echo_service_client::EchoServiceClient,
-    genome_service_client::GenomeServiceClient, hope_service_client::HopeServiceClient,
-    knowledge_service_client::KnowledgeServiceClient, memory_service_client::MemoryServiceClient,
-    resonance_service_client::ResonanceServiceClient, skill_service_client::SkillServiceClient,
-    vision_service_client::VisionServiceClient, *,
+    genome_service_client::GenomeServiceClient, geo_service_client::GeoServiceClient,
+    hope_service_client::HopeServiceClient, knowledge_service_client::KnowledgeServiceClient,
+    memory_service_client::MemoryServiceClient, resonance_service_client::ResonanceServiceClient,
+    skill_service_client::SkillServiceClient, vision_service_client::VisionServiceClient, *,
 };
 
 /// Hope gRPC Client
@@ -46,6 +46,8 @@ pub struct HopeClient {
     pub vision: VisionServiceClient<Channel>,
     /// Resonance szolgáltatás (rezonancia auth)
     pub resonance: ResonanceServiceClient<Channel>,
+    /// Geo szolgáltatás (térbeli kontextus)
+    pub geo: GeoServiceClient<Channel>,
     /// Szerver cím
     address: String,
 }
@@ -70,6 +72,7 @@ impl HopeClient {
             genome: GenomeServiceClient::new(channel.clone()),
             vision: VisionServiceClient::new(channel.clone()),
             resonance: ResonanceServiceClient::new(channel.clone()),
+            geo: GeoServiceClient::new(channel.clone()),
             address: address.to_string(),
         })
     }
@@ -488,6 +491,114 @@ impl HopeClient {
     /// Resonance Status - Státusz lekérdezés
     pub async fn resonance_status(&mut self) -> HopeResult<ResonanceStatusResponse> {
         let response = self.resonance.get_status(EmptyRequest {}).await?;
+        Ok(response.into_inner())
+    }
+
+    // ==================== GEO SERVICE ====================
+
+    /// Jelenlegi lokáció beállítása
+    pub async fn set_location(
+        &mut self,
+        latitude: f64,
+        longitude: f64,
+        source: &str,
+    ) -> HopeResult<SetLocationResponse> {
+        let request = SetLocationRequest {
+            latitude,
+            longitude,
+            altitude: 0.0,
+            accuracy: 0.0,
+            source: source.to_string(),
+        };
+
+        let response = self.geo.set_location(request).await?;
+        Ok(response.into_inner())
+    }
+
+    /// Jelenlegi lokáció lekérdezése
+    pub async fn get_location(&mut self) -> HopeResult<GeoLocationResponse> {
+        let response = self.geo.get_location(EmptyRequest {}).await?;
+        Ok(response.into_inner())
+    }
+
+    /// Hely hozzáadása
+    pub async fn add_place(
+        &mut self,
+        name: &str,
+        place_type: &str,
+        latitude: f64,
+        longitude: f64,
+        radius: f64,
+    ) -> HopeResult<AddPlaceResponse> {
+        let request = AddPlaceRequest {
+            name: name.to_string(),
+            place_type: place_type.to_string(),
+            latitude,
+            longitude,
+            radius,
+            address: String::new(),
+            country_code: String::new(),
+        };
+
+        let response = self.geo.add_place(request).await?;
+        Ok(response.into_inner())
+    }
+
+    /// Helyek listázása
+    pub async fn list_places(&mut self) -> HopeResult<ListPlacesResponse> {
+        let request = ListPlacesRequest {
+            place_type: String::new(),
+            nearby_lat: 0.0,
+            nearby_lon: 0.0,
+            radius_km: 0.0,
+            limit: 100,
+        };
+
+        let response = self.geo.list_places(request).await?;
+        Ok(response.into_inner())
+    }
+
+    /// Otthon beállítása
+    pub async fn set_home(&mut self, place_id: &str) -> HopeResult<SetHomeResponse> {
+        let request = SetHomeRequest {
+            place_id: place_id.to_string(),
+        };
+
+        let response = self.geo.set_home(request).await?;
+        Ok(response.into_inner())
+    }
+
+    /// Otthon lekérdezése
+    pub async fn get_home(&mut self) -> HopeResult<PlaceResponse> {
+        let response = self.geo.get_home(EmptyRequest {}).await?;
+        Ok(response.into_inner())
+    }
+
+    /// Távolság számítás két pont között
+    pub async fn get_distance(
+        &mut self,
+        lat1: f64,
+        lon1: f64,
+        lat2: f64,
+        lon2: f64,
+    ) -> HopeResult<GetDistanceResponse> {
+        let request = GetDistanceRequest {
+            lat1,
+            lon1,
+            lat2,
+            lon2,
+            from_place_id: String::new(),
+            to_place_id: String::new(),
+            from_current: false,
+        };
+
+        let response = self.geo.get_distance(request).await?;
+        Ok(response.into_inner())
+    }
+
+    /// Geo statisztikák
+    pub async fn geo_stats(&mut self) -> HopeResult<GeoStatsResponse> {
+        let response = self.geo.get_geo_stats(EmptyRequest {}).await?;
         Ok(response.into_inner())
     }
 }
