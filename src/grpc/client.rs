@@ -8,10 +8,8 @@ use tonic::transport::Channel;
 
 use crate::core::{HopeError, HopeResult};
 
-// Generated proto types
-pub mod proto {
-    tonic::include_proto!("hope");
-}
+// Közös proto modul használata
+use super::proto;
 
 use proto::{
     action_service_client::ActionServiceClient, code_service_client::CodeServiceClient,

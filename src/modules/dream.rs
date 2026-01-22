@@ -15,6 +15,7 @@
 //! ()=>[] - A tiszta potenciálból az álom megszületik
 
 use crate::core::HopeResult;
+use chrono::Utc;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -358,10 +359,20 @@ impl DreamEngine {
             return Err("Nem alszom - nem tudok álmodni!".into());
         }
 
-        let mut rng = rand::thread_rng();
+        // Összes random érték generálása ELŐRE (mielőtt await-olnánk)
+        // Ez azért kell, mert a ThreadRng nem Send
+        let (dream_type_idx, importance, emotion_idx, emotion_intensity) = {
+            let mut rng = rand::thread_rng();
+            (
+                rng.gen_range(0..6usize),
+                rng.gen_range(0.3..0.9f64),
+                rng.gen_range(0..5usize),
+                rng.gen_range(0.3..0.8f64),
+            )
+        };
 
         // Álom típus választása
-        let dream_type = match rng.gen_range(0..6) {
+        let dream_type = match dream_type_idx {
             0 => DreamType::Consolidation,
             1 => DreamType::Association,
             2 => DreamType::Creative,
@@ -377,21 +388,19 @@ impl DreamEngine {
             // Random seed a tároltakból vagy alapértelmezett
             let seeds = self.dream_seeds.read().await;
             let default_seed = "Hope, memória, kreativitás";
-            let seed = seeds.first().map(|s| s.as_str()).unwrap_or(default_seed);
-            self.generate_dream_content(&dream_type, seed).await
+            let seed_str = seeds.first().map(|s| s.as_str()).unwrap_or(default_seed);
+            self.generate_dream_content(&dream_type, seed_str).await
         };
 
         let mut dream = Dream::new(dream_type, &content);
 
         // Random fontosság
-        dream.importance = rng.gen_range(0.3..0.9);
+        dream.importance = importance;
 
         // Random érzelmek
         let emotions = ["joy", "curiosity", "wonder", "peace", "nostalgia"];
-        let emotion = emotions[rng.gen_range(0..emotions.len())];
-        dream
-            .emotions
-            .insert(emotion.to_string(), rng.gen_range(0.3..0.8));
+        let emotion = emotions[emotion_idx];
+        dream.emotions.insert(emotion.to_string(), emotion_intensity);
 
         // Mentés
         self.dreams_tonight.write().await.push(dream.clone());
@@ -569,6 +578,407 @@ impl Default for DreamEngine {
 }
 
 // ============================================================================
+// BACKGROUND DREAMING - Háttérfolyamat
+// ============================================================================
+
+use crate::data::CodeGraph;
+use std::path::PathBuf;
+use tokio::sync::mpsc;
+use tokio::task::JoinHandle;
+
+/// Háttér álom konfiguráció
+#[derive(Clone, Debug)]
+pub struct BackgroundConfig {
+    /// Inaktivitás küszöb (másodperc) - ennyi idő után indul az alvás
+    pub idle_threshold_secs: u64,
+    /// Alvási ciklus hossza (másodperc)
+    pub sleep_cycle_secs: u64,
+    /// Auto-save intervallum (másodperc)
+    pub auto_save_interval_secs: u64,
+    /// Memória fájl útvonala
+    pub memory_path: PathBuf,
+    /// Felejtési küszöb (ennél régebbi és alacsonyabb fontosságú emlékek törölhetők)
+    pub forget_threshold_days: u64,
+    /// Minimum fontosság a megőrzéshez
+    pub min_importance_to_keep: f64,
+}
+
+impl Default for BackgroundConfig {
+    fn default() -> Self {
+        Self {
+            idle_threshold_secs: 300,        // 5 perc inaktivitás után alszik
+            sleep_cycle_secs: 60,            // 1 perces alvási ciklusok
+            auto_save_interval_secs: 300,    // 5 percenként ment
+            memory_path: PathBuf::from("hope_memory.json"),
+            forget_threshold_days: 30,       // 30 napnál régebbi emlékek felejthetők
+            min_importance_to_keep: 0.3,     // 0.3 alatti fontosság felejtődik
+        }
+    }
+}
+
+/// Háttér álom parancsok
+#[derive(Debug)]
+pub enum DreamCommand {
+    /// Aktivitás jelzése (reseteli az inaktivitás számlálót)
+    Activity,
+    /// Kézi alvás indítás
+    ForceSleep,
+    /// Kézi ébresztés
+    ForceWake,
+    /// Leállítás
+    Shutdown,
+    /// Azonnali mentés
+    SaveNow,
+}
+
+/// Konszolidációs eredmény
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct ConsolidationResult {
+    /// Feldolgozott emlékek száma
+    pub memories_processed: usize,
+    /// Elfelejtett emlékek
+    pub memories_forgotten: usize,
+    /// Erősített emlékek
+    pub memories_strengthened: usize,
+    /// Talált új asszociációk
+    pub new_associations: usize,
+    /// Mentés történt
+    pub saved: bool,
+}
+
+/// Háttérben futó álom folyamat
+pub struct BackgroundDreamer {
+    /// Konfiguráció
+    config: BackgroundConfig,
+    /// Álom motor
+    engine: Arc<DreamEngine>,
+    /// CodeGraph referencia
+    graph: Arc<CodeGraph>,
+    /// Parancs küldő
+    command_tx: mpsc::Sender<DreamCommand>,
+    /// Háttér task handle
+    task_handle: Option<JoinHandle<()>>,
+    /// Utolsó aktivitás időpontja
+    last_activity: Arc<RwLock<f64>>,
+    /// Fut-e a háttérfolyamat
+    running: Arc<RwLock<bool>>,
+}
+
+impl BackgroundDreamer {
+    /// Új háttér álmodó létrehozása
+    pub fn new(graph: Arc<CodeGraph>, config: BackgroundConfig) -> Self {
+        let (command_tx, _) = mpsc::channel(32);
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs_f64();
+
+        Self {
+            config,
+            engine: Arc::new(DreamEngine::new()),
+            graph,
+            command_tx,
+            task_handle: None,
+            last_activity: Arc::new(RwLock::new(now)),
+            running: Arc::new(RwLock::new(false)),
+        }
+    }
+
+    /// Háttérfolyamat indítása
+    pub async fn start(&mut self) -> crate::core::HopeResult<()> {
+        if *self.running.read().await {
+            return Err("Már fut a háttérfolyamat".into());
+        }
+
+        let (tx, rx) = mpsc::channel(32);
+        self.command_tx = tx;
+
+        let engine = self.engine.clone();
+        let graph = self.graph.clone();
+        let config = self.config.clone();
+        let last_activity = self.last_activity.clone();
+        let running = self.running.clone();
+
+        *running.write().await = true;
+
+        let handle = tokio::spawn(async move {
+            Self::background_loop(engine, graph, config, rx, last_activity, running).await;
+        });
+
+        self.task_handle = Some(handle);
+        tracing::info!("🌙 Háttér álmodó elindult");
+
+        Ok(())
+    }
+
+    /// Háttér loop
+    async fn background_loop(
+        engine: Arc<DreamEngine>,
+        graph: Arc<CodeGraph>,
+        config: BackgroundConfig,
+        mut rx: mpsc::Receiver<DreamCommand>,
+        last_activity: Arc<RwLock<f64>>,
+        running: Arc<RwLock<bool>>,
+    ) {
+        let mut last_save = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs_f64();
+
+        loop {
+            // Parancs ellenőrzés (nem blokkoló)
+            match rx.try_recv() {
+                Ok(DreamCommand::Shutdown) => {
+                    tracing::info!("🌅 Háttér álmodó leáll");
+                    *running.write().await = false;
+                    // Utolsó mentés
+                    let _ = graph.auto_save(&config.memory_path);
+                    break;
+                }
+                Ok(DreamCommand::Activity) => {
+                    let now = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs_f64();
+                    *last_activity.write().await = now;
+
+                    // Ha alszik, ébresztés
+                    if engine.is_dreaming().await {
+                        let _ = engine.wake_up().await;
+                        tracing::debug!("👁️ Aktivitás miatt felébredtem");
+                    }
+                }
+                Ok(DreamCommand::ForceSleep) => {
+                    if !engine.is_dreaming().await {
+                        let _ = engine.start_sleep().await;
+                    }
+                }
+                Ok(DreamCommand::ForceWake) => {
+                    if engine.is_dreaming().await {
+                        let _ = engine.wake_up().await;
+                    }
+                }
+                Ok(DreamCommand::SaveNow) => {
+                    let _ = graph.auto_save(&config.memory_path);
+                    last_save = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs_f64();
+                }
+                Err(_) => {} // Nincs parancs, folytatjuk
+            }
+
+            let now = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs_f64();
+
+            // Inaktivitás ellenőrzés
+            let last_act = *last_activity.read().await;
+            let idle_time = now - last_act;
+
+            if idle_time >= config.idle_threshold_secs as f64 && !engine.is_dreaming().await {
+                // Elalszunk
+                tracing::info!("😴 Inaktivitás detektálva ({:.0}s) - alvás indul", idle_time);
+                let _ = engine.start_sleep().await;
+            }
+
+            // Ha alszunk, álmodunk és konszolidálunk
+            if engine.is_dreaming().await {
+                // Fázis váltás
+                let _ = engine.advance_phase().await;
+                let phase = engine.current_phase().await;
+
+                match phase {
+                    SleepPhase::DeepSleep => {
+                        // Mély alvásban: memória konszolidáció
+                        let result = Self::consolidate_memory(&graph, &config).await;
+                        if result.memories_forgotten > 0 || result.memories_strengthened > 0 {
+                            tracing::debug!(
+                                "🧠 Konszolidáció: {} elfelejtve, {} erősítve",
+                                result.memories_forgotten,
+                                result.memories_strengthened
+                            );
+                        }
+                    }
+                    SleepPhase::Rem => {
+                        // REM fázisban: álmodás és asszociációk
+                        let _ = engine.dream(None).await;
+                        let assoc_count = Self::find_new_associations(&graph).await;
+                        if assoc_count > 0 {
+                            tracing::debug!("🔗 {} új asszociáció felfedezve", assoc_count);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            // Auto-save ellenőrzés
+            if now - last_save >= config.auto_save_interval_secs as f64 {
+                if let Err(e) = graph.auto_save(&config.memory_path) {
+                    tracing::warn!("Auto-save hiba: {}", e);
+                } else {
+                    tracing::debug!("💾 Auto-save sikeres");
+                }
+                last_save = now;
+            }
+
+            // Alvás a következő ciklusig
+            tokio::time::sleep(tokio::time::Duration::from_secs(config.sleep_cycle_secs)).await;
+        }
+    }
+
+    /// Memória konszolidáció
+    async fn consolidate_memory(
+        graph: &Arc<CodeGraph>,
+        config: &BackgroundConfig,
+    ) -> ConsolidationResult {
+        use crate::data::BlockType;
+        use chrono::Duration;
+
+        let mut result = ConsolidationResult::default();
+
+        let now = Utc::now();
+        let threshold = now - Duration::days(config.forget_threshold_days as i64);
+
+        // Összes memória block lekérése
+        let memories = graph.find_by_type(BlockType::Memory);
+        result.memories_processed = memories.len();
+
+        for memory in memories {
+            // Felejtés: régi és alacsony fontosságú
+            if memory.created_at < threshold && memory.importance < config.min_importance_to_keep {
+                // Soft delete (nem töröljük véglegesen)
+                graph.delete(&memory.id);
+                result.memories_forgotten += 1;
+            }
+            // Erősítés: gyakran használt emlékek
+            else if memory.access_count > 5 && memory.importance < 0.9 {
+                graph.update(&memory.id, |block| {
+                    block.importance = (block.importance + 0.05).min(1.0);
+                });
+                result.memories_strengthened += 1;
+            }
+        }
+
+        result
+    }
+
+    /// Új asszociációk keresése
+    async fn find_new_associations(graph: &Arc<CodeGraph>) -> usize {
+        use crate::data::{BlockType, ConnectionType};
+
+        let mut new_connections = 0;
+
+        // Gondolatok és koncepciók közötti hasonlóságok keresése
+        let thoughts = graph.find_by_type(BlockType::Thought);
+        let concepts = graph.find_by_type(BlockType::Concept);
+
+        // Egyszerű szó alapú hasonlóság
+        for thought in &thoughts {
+            let thought_words: std::collections::HashSet<_> = thought
+                .content
+                .to_lowercase()
+                .split_whitespace()
+                .map(|s| s.to_string())
+                .collect();
+
+            for concept in &concepts {
+                // Ellenőrzés hogy már van-e kapcsolat
+                let already_connected = thought
+                    .connections
+                    .iter()
+                    .any(|c| c.target_id == concept.id);
+
+                if already_connected {
+                    continue;
+                }
+
+                let concept_words: std::collections::HashSet<_> = concept
+                    .content
+                    .to_lowercase()
+                    .split_whitespace()
+                    .map(|s| s.to_string())
+                    .collect();
+
+                // Ha van közös szó, kapcsolat létrehozása
+                let common: Vec<_> = thought_words.intersection(&concept_words).collect();
+                if !common.is_empty() {
+                    let strength = (common.len() as f64 / thought_words.len().max(1) as f64).min(1.0);
+                    if strength >= 0.2 {
+                        graph.connect(
+                            &thought.id,
+                            &concept.id,
+                            ConnectionType::AssociatesWith,
+                            strength,
+                        );
+                        new_connections += 1;
+                    }
+                }
+            }
+        }
+
+        new_connections
+    }
+
+    /// Aktivitás jelzése (hívd amikor a felhasználó interaktál)
+    pub async fn signal_activity(&self) {
+        let _ = self.command_tx.send(DreamCommand::Activity).await;
+    }
+
+    /// Kézi alvás kényszerítés
+    pub async fn force_sleep(&self) {
+        let _ = self.command_tx.send(DreamCommand::ForceSleep).await;
+    }
+
+    /// Kézi ébresztés
+    pub async fn force_wake(&self) {
+        let _ = self.command_tx.send(DreamCommand::ForceWake).await;
+    }
+
+    /// Azonnali mentés
+    pub async fn save_now(&self) {
+        let _ = self.command_tx.send(DreamCommand::SaveNow).await;
+    }
+
+    /// Leállítás
+    pub async fn shutdown(&mut self) {
+        let _ = self.command_tx.send(DreamCommand::Shutdown).await;
+        if let Some(handle) = self.task_handle.take() {
+            let _ = handle.await;
+        }
+    }
+
+    /// Fut-e
+    pub async fn is_running(&self) -> bool {
+        *self.running.read().await
+    }
+
+    /// Állapot lekérdezés
+    pub async fn status(&self) -> String {
+        let is_dreaming = self.engine.is_dreaming().await;
+        let phase = self.engine.current_phase().await;
+        let stats = self.engine.stats().await;
+        let is_running = *self.running.read().await;
+
+        format!(
+            "🌙 BackgroundDreamer\n\
+             ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\
+             🔄 Háttér: {}\n\
+             😴 Állapot: {}\n\
+             🌀 Fázis: {}\n\
+             📊 Álmok: {}\n\
+             💾 Mentési útvonal: {}",
+            if is_running { "fut" } else { "leállítva" },
+            if is_dreaming { "alszik" } else { "ébren" },
+            phase,
+            stats.total_dreams,
+            self.config.memory_path.display()
+        )
+    }
+}
+
+// ============================================================================
 // TESTS
 // ============================================================================
 
@@ -649,5 +1059,60 @@ mod tests {
 
         let seeds = engine.dream_seeds.read().await;
         assert_eq!(seeds.len(), 2);
+    }
+
+    #[test]
+    fn test_background_config_default() {
+        let config = BackgroundConfig::default();
+
+        assert_eq!(config.idle_threshold_secs, 300);
+        assert_eq!(config.sleep_cycle_secs, 60);
+        assert_eq!(config.auto_save_interval_secs, 300);
+        assert_eq!(config.forget_threshold_days, 30);
+        assert!((config.min_importance_to_keep - 0.3).abs() < 0.001);
+    }
+
+    #[tokio::test]
+    async fn test_background_dreamer_creation() {
+        use crate::data::CodeGraph;
+
+        let graph = Arc::new(CodeGraph::new());
+        let config = BackgroundConfig::default();
+        let dreamer = BackgroundDreamer::new(graph, config);
+
+        assert!(!dreamer.is_running().await);
+    }
+
+    #[tokio::test]
+    async fn test_background_dreamer_start_stop() {
+        use crate::data::CodeGraph;
+
+        let graph = Arc::new(CodeGraph::new());
+        let mut config = BackgroundConfig::default();
+        config.sleep_cycle_secs = 1; // Gyors ciklus a teszthez
+
+        let mut dreamer = BackgroundDreamer::new(graph, config);
+
+        // Indítás
+        dreamer.start().await.unwrap();
+        assert!(dreamer.is_running().await);
+
+        // Rövid várakozás
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+        // Leállítás
+        dreamer.shutdown().await;
+        assert!(!dreamer.is_running().await);
+    }
+
+    #[tokio::test]
+    async fn test_consolidation_result() {
+        let result = ConsolidationResult::default();
+
+        assert_eq!(result.memories_processed, 0);
+        assert_eq!(result.memories_forgotten, 0);
+        assert_eq!(result.memories_strengthened, 0);
+        assert_eq!(result.new_associations, 0);
+        assert!(!result.saved);
     }
 }

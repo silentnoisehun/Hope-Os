@@ -947,3 +947,117 @@ message VoiceStatusResponse {
     int32 stt_port = 7;
     double latency_ms = 8;
 }
+
+// ============================================================================
+// VISION SERVICE - Hope "szeme" - Képfeldolgozás
+// ============================================================================
+
+service VisionService {
+    // Kép fogadása és feldolgozása
+    rpc See(SeeRequest) returns (SeeResponse);
+
+    // Kép fogadása streaming módban (nagy képekhez)
+    rpc SeeStream(stream ImageChunk) returns (SeeResponse);
+
+    // Vizuális emlékek lekérdezése
+    rpc GetVisualMemories(GetVisualMemoriesRequest) returns (VisualMemoriesResponse);
+
+    // Vizuális input státusz
+    rpc GetVisionStatus(EmptyRequest) returns (VisionStatusResponse);
+
+    // Kép összehasonlítás (hasonlóság)
+    rpc Compare(CompareImagesRequest) returns (CompareImagesResponse);
+}
+
+// === See - Kép fogadása ===
+
+message SeeRequest {
+    bytes image_data = 1;           // Kép adat (PNG, JPEG, GIF, WebP, BMP)
+    string description = 2;         // Opcionális leírás
+    string context = 3;             // Kontextus (honnan jött)
+    double importance = 4;          // Fontosság (0.0 - 1.0)
+    bool store_in_memory = 5;       // Mentés a CodeGraph-ba
+    map<string, string> metadata = 6;
+}
+
+message SeeResponse {
+    bool success = 1;
+    string id = 2;                  // Vizuális input ID
+    ImageAnalysis analysis = 3;     // Elemzés eredménye
+    string error = 4;
+}
+
+message ImageAnalysis {
+    string format = 1;              // "PNG", "JPEG", "GIF", stb.
+    int32 width = 2;
+    int32 height = 3;
+    int64 file_size = 4;
+    string hash = 5;                // Tartalom hash
+    double aspect_ratio = 6;
+    double megapixels = 7;
+    repeated string detected_features = 8;  // Későbbi AI feature detection
+    map<string, string> metadata = 9;
+}
+
+// === Streaming képfeltöltés ===
+
+message ImageChunk {
+    bytes data = 1;                 // Chunk adat
+    int32 sequence = 2;             // Sorszám
+    bool is_final = 3;              // Utolsó chunk
+    string description = 4;         // Csak az első chunk-ban
+    double importance = 5;          // Csak az első chunk-ban
+}
+
+// === Vizuális emlékek ===
+
+message GetVisualMemoriesRequest {
+    int32 limit = 1;
+    double min_importance = 2;
+    string format_filter = 3;       // Opcionális formátum szűrő
+    bool recent_only = 4;           // Csak legutóbbiak
+}
+
+message VisualMemoriesResponse {
+    repeated VisualMemoryInfo memories = 1;
+    int32 total = 2;
+}
+
+message VisualMemoryInfo {
+    string id = 1;
+    string format = 2;
+    int32 width = 3;
+    int32 height = 4;
+    string description = 5;
+    double importance = 6;
+    bool processed = 7;
+    Timestamp received_at = 8;
+    string hash = 9;
+    repeated string related_blocks = 10;  // Kapcsolódó CodeGraph block ID-k
+}
+
+// === Vision státusz ===
+
+message VisionStatusResponse {
+    int64 total_received = 1;
+    int64 total_processed = 2;
+    int32 stored_count = 3;
+    int64 total_bytes = 4;
+    double avg_megapixels = 5;
+    map<string, int64> format_counts = 6;
+    bool graph_connected = 7;
+}
+
+// === Kép összehasonlítás ===
+
+message CompareImagesRequest {
+    string image_id_1 = 1;
+    string image_id_2 = 2;
+}
+
+message CompareImagesResponse {
+    bool success = 1;
+    double hash_similarity = 2;     // Hash alapú hasonlóság (0.0 - 1.0)
+    double size_similarity = 3;     // Méret hasonlóság
+    string comparison_notes = 4;
+}

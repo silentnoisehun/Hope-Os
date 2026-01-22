@@ -5,15 +5,16 @@
 <h1 align="center">Hope OS</h1>
 
 <p align="center">
-  <strong>LLM-Agnostic Cognitive Kernel in Rust</strong>
+  <strong>Multimodal Cognitive Kernel in Rust</strong>
 </p>
 
 <p align="center">
   <a href="#-performance"><img src="https://img.shields.io/badge/latency-0.36ms-brightgreen" alt="Latency"/></a>
   <a href="#-performance"><img src="https://img.shields.io/badge/throughput-2800%2B%20req%2Fs-blue" alt="Throughput"/></a>
-  <a href="#-the-graph"><img src="https://img.shields.io/badge/default-in--memory-orange" alt="In-Memory"/></a>
+  <a href="#-vision"><img src="https://img.shields.io/badge/vision-multimodal-purple" alt="Multimodal"/></a>
+  <a href="#-persistence"><img src="https://img.shields.io/badge/memory-persistent-blue" alt="Persistent"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License"/></a>
-  <a href="#"><img src="https://img.shields.io/badge/tests-196%20passing-brightgreen" alt="Tests"/></a>
+  <a href="#"><img src="https://img.shields.io/badge/tests-214%20passing-brightgreen" alt="Tests"/></a>
 </p>
 
 <p align="center">
@@ -63,7 +64,16 @@ pip install git+https://github.com/silentnoisehun/Hope-Os
 
 ## 🧠 What is Hope OS?
 
-**Hope OS is an LLM-agnostic cognitive kernel.** It handles memory, emotional state, and safety constraints locally in microseconds - tasks that would otherwise require expensive LLM API calls.
+**Hope OS is a multimodal cognitive kernel.** It handles memory, vision, emotional state, and safety constraints locally in microseconds - tasks that would otherwise require expensive LLM API calls.
+
+### v0.2.0 Highlights
+
+| Feature | Description |
+|---------|-------------|
+| **Multimodal Vision** | Receives, analyzes, and stores images (PNG, JPEG, WebP, GIF) |
+| **Persistent Memory** | Survives restarts via GraphSnapshot - "immortal" memories |
+| **Dream Phase** | Background consolidation when idle - biologically-inspired |
+| **214 Tests** | Comprehensive test coverage across all modules |
 
 ### The Key Insight
 
@@ -124,6 +134,120 @@ pip install git+https://github.com/silentnoisehun/Hope-Os
 | Query parsing overhead | **Direct memory access** |
 | JSON serialization | **Binary gRPC protocol** |
 | Connection pooling | **No connections needed** |
+
+---
+
+## 👁️ Vision (Multimodal)
+
+**Hope OS can see.** The VisionEngine processes images and stores visual memories.
+
+```rust
+use hope_os::modules::VisionEngine;
+
+let mut vision = VisionEngine::new();
+
+// Receive an image
+let image_bytes = std::fs::read("photo.jpg")?;
+let id = vision.receive(&image_bytes)?;
+
+// With description and importance
+let id = vision.receive_with_description(
+    &image_bytes,
+    "Sunset over mountains",
+    0.9  // importance
+)?;
+```
+
+### Supported Formats
+
+| Format | Detection | Size Analysis |
+|--------|-----------|---------------|
+| PNG | Magic bytes | Width/Height extraction |
+| JPEG | Magic bytes | SOF0 parsing |
+| WebP | Magic bytes | RIFF header |
+| GIF | Magic bytes | Logical screen |
+| BMP | Magic bytes | DIB header |
+| SVG | XML detection | - |
+
+### gRPC VisionService
+
+```protobuf
+service VisionService {
+    rpc See(SeeRequest) returns (SeeResponse);
+    rpc SeeStream(stream ImageChunk) returns (SeeResponse);  // For large images
+    rpc GetVisualMemories(GetVisualMemoriesRequest) returns (VisualMemoriesResponse);
+    rpc GetVisionStatus(EmptyRequest) returns (VisionStatusResponse);
+    rpc Compare(CompareImagesRequest) returns (CompareImagesResponse);
+}
+```
+
+---
+
+## 💾 Persistence (Immortal Memory)
+
+**Hope OS survives restarts.** The GraphSnapshot system saves and loads the entire cognitive state.
+
+```rust
+use hope_os::data::CodeGraph;
+use std::path::Path;
+
+let graph = CodeGraph::new();
+
+// Add memories, connections, etc.
+graph.add_block(block);
+
+// Save to disk
+graph.save_to_disk(Path::new("hope_memory.json"))?;
+
+// Load on startup
+let graph = CodeGraph::load_from_disk(Path::new("hope_memory.json"))?;
+
+// Or use load_or_new for graceful startup
+let graph = CodeGraph::load_or_new(Path::new("hope_memory.json"));
+```
+
+### Snapshot Format
+
+```json
+{
+  "version": 1,
+  "saved_at": "2024-01-15T10:30:00Z",
+  "blocks": [...],
+  "stats": {
+    "total_blocks": 1542,
+    "total_connections": 3891
+  }
+}
+```
+
+---
+
+## 😴 Dream Phase (Background Consolidation)
+
+**Hope OS dreams.** When idle, the BackgroundDreamer consolidates memories - just like biological sleep.
+
+```rust
+use hope_os::modules::dream::{BackgroundDreamer, BackgroundConfig};
+
+let config = BackgroundConfig {
+    idle_threshold_secs: 300,      // Start dreaming after 5 min idle
+    sleep_cycle_secs: 60,          // Dream cycle every minute
+    auto_save_interval_secs: 300,  // Auto-save every 5 min
+    forget_threshold_days: 30,     // Forget old, unimportant memories
+    min_importance_to_keep: 0.3,   // Keep memories above this threshold
+    ..Default::default()
+};
+
+let dreamer = BackgroundDreamer::new(config, dream_engine, graph);
+dreamer.start().await;
+```
+
+### What Happens During Dreams?
+
+1. **Memory Consolidation** - Strengthens frequently accessed memories
+2. **Forgetting** - Removes old, low-importance memories
+3. **Association Discovery** - Finds new connections between concepts
+4. **Auto-Save** - Persists the graph to disk
 
 ---
 
@@ -249,20 +373,55 @@ async fn main() {
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
+### Full System Architecture (v0.2.0)
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                         HOPE OS v0.2.0                                │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐               │
+│  │   Vision    │    │   Memory    │    │  Cognition  │               │
+│  │   Engine    │    │   Service   │    │   Service   │               │
+│  │  (See/Eye)  │    │  (Remember) │    │  (Think)    │               │
+│  └──────┬──────┘    └──────┬──────┘    └──────┬──────┘               │
+│         │                  │                  │                       │
+│         └──────────────────┼──────────────────┘                       │
+│                            │                                          │
+│                   ┌────────▼────────┐                                 │
+│                   │    CodeGraph    │◄─────────────────┐              │
+│                   │  (The Memory)   │                  │              │
+│                   └────────┬────────┘                  │              │
+│                            │                           │              │
+│              ┌─────────────┼─────────────┐             │              │
+│              │             │             │             │              │
+│      ┌───────▼───────┐ ┌───▼───┐ ┌───────▼───────┐    │              │
+│      │  Persistence  │ │Hebbian│ │  Dreamer      │    │              │
+│      │  (Snapshot)   │ │Network│ │  (Background) │────┘              │
+│      │               │ │       │ │               │                    │
+│      │  save_to_disk │ │ Learn │ │ - Consolidate │                    │
+│      │  load_from_   │ │       │ │ - Forget      │                    │
+│      │  disk         │ │       │ │ - Associate   │                    │
+│      └───────────────┘ └───────┘ └───────────────┘                    │
+│                                                                       │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
 ---
 
 ## 🎯 Core Modules
 
-### Cognitive Layer (22 modules)
+### Cognitive Layer (23 modules)
 
 | Module | Purpose | Key Features |
 |--------|---------|--------------|
+| `vision` | **NEW** Multimodal vision | Image processing, format detection, visual memory |
 | `emotion_engine` | 21-dimensional emotion system | Wave mathematics, interference patterns |
 | `consciousness` | 6-layer consciousness model | Quantum coherence, evolution |
 | `aware` | Introspection (@aware) | Identity, capabilities, state tracking |
 | `memory` | 6-layer cognitive memory | Working → Short-term → Long-term |
 | `hebbian` | Neural learning | Hebbian networks, weight updates |
-| `dream` | Dream mode | Memory consolidation, creative association |
+| `dream` | **ENHANCED** Dream mode | Background consolidation, auto-save, forgetting |
 | `personality` | Big Five + custom traits | Evolving personality system |
 | `collective` | Collective consciousness | MDP decision making, agent voting |
 
@@ -374,20 +533,22 @@ hope-os/
 │   │   └── error.rs            # Error types
 │   │
 │   ├── data/                   # Data structures (THE MAGIC)
-│   │   ├── code_graph.rs       # The graph - in-memory by default
+│   │   ├── code_graph.rs       # The graph + persistence (save/load)
 │   │   └── neuroblast.rs       # Neural wave propagation
 │   │
-│   ├── modules/                # 22 cognitive modules
+│   ├── modules/                # 23 cognitive modules
+│   │   ├── vision.rs           # NEW: Multimodal vision engine
+│   │   ├── dream.rs            # ENHANCED: Background dreamer
 │   │   ├── emotion_engine.rs   # 21D emotions
 │   │   ├── consciousness.rs    # 6-layer consciousness
 │   │   ├── memory.rs           # Cognitive memory
 │   │   ├── personality.rs      # Big Five traits
 │   │   ├── collective.rs       # Collective consciousness
 │   │   ├── distributed.rs      # Raft consensus
-│   │   └── ...                 # 16 more modules
+│   │   └── ...                 # 15 more modules
 │   │
 │   ├── grpc/                   # gRPC interface
-│   │   ├── server.rs           # gRPC server
+│   │   ├── server.rs           # gRPC server (all services)
 │   │   └── client.rs           # gRPC client
 │   │
 │   └── bin/
@@ -395,6 +556,12 @@ hope-os/
 │
 ├── proto/
 │   └── hope.proto              # Protocol buffer definitions
+│
+├── python_client/              # Python integration
+│   ├── brain_eyes.py           # Multimodal brain (Vision + LLM)
+│   ├── test_vision.py          # Vision tests
+│   ├── regenerate_proto.py     # Proto regeneration
+│   └── .env.example            # API key template
 │
 ├── Cargo.toml                  # No DB server dependencies
 ├── README.md

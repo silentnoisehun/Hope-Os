@@ -874,6 +874,140 @@ impl CodeGraph {
 }
 
 // ============================================================================
+// PERSISTENCE - Snapshot / Save / Load
+// ============================================================================
+
+/// Snapshot a CodeGraph állapotáról (szerializálható)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GraphSnapshot {
+    /// Verzió (jövőbeli kompatibilitás)
+    pub version: u32,
+    /// Mentés időpontja
+    pub saved_at: DateTime<Utc>,
+    /// Összes block
+    pub blocks: Vec<CodeBlock>,
+    /// Statisztikák mentéskor
+    pub stats: GraphStats,
+}
+
+impl GraphSnapshot {
+    /// Snapshot verzió
+    pub const CURRENT_VERSION: u32 = 1;
+}
+
+impl CodeGraph {
+    /// Snapshot készítése a gráf aktuális állapotáról
+    pub fn snapshot(&self) -> GraphSnapshot {
+        let blocks = self.blocks.read().unwrap();
+        GraphSnapshot {
+            version: GraphSnapshot::CURRENT_VERSION,
+            saved_at: Utc::now(),
+            blocks: blocks.values().cloned().collect(),
+            stats: self.stats(),
+        }
+    }
+
+    /// Gráf mentése lemezre (JSON formátum)
+    ///
+    /// # Példa
+    /// ```no_run
+    /// use hope_os::data::CodeGraph;
+    /// use std::path::Path;
+    ///
+    /// let graph = CodeGraph::new();
+    /// graph.remember("Fontos emlék", 0.9).unwrap();
+    /// graph.save_to_disk(Path::new("hope_memory.json")).unwrap();
+    /// ```
+    pub fn save_to_disk(&self, path: &std::path::Path) -> HopeResult<()> {
+        let snapshot = self.snapshot();
+        let json = serde_json::to_string_pretty(&snapshot)
+            .map_err(|e| format!("JSON szerializálás hiba: {}", e))?;
+
+        std::fs::write(path, json)
+            .map_err(|e| format!("Fájl írás hiba: {}", e))?;
+
+        tracing::info!(
+            "CodeGraph mentve: {} ({} block, {} kapcsolat)",
+            path.display(),
+            snapshot.stats.total_blocks,
+            snapshot.stats.total_connections
+        );
+
+        Ok(())
+    }
+
+    /// Gráf betöltése lemezről
+    ///
+    /// # Példa
+    /// ```no_run
+    /// use hope_os::data::CodeGraph;
+    /// use std::path::Path;
+    ///
+    /// let graph = CodeGraph::load_from_disk(Path::new("hope_memory.json")).unwrap();
+    /// println!("Betöltve: {} block", graph.len());
+    /// ```
+    pub fn load_from_disk(path: &std::path::Path) -> HopeResult<Self> {
+        let json = std::fs::read_to_string(path)
+            .map_err(|e| format!("Fájl olvasás hiba: {}", e))?;
+
+        let snapshot: GraphSnapshot = serde_json::from_str(&json)
+            .map_err(|e| format!("JSON parse hiba: {}", e))?;
+
+        // Verzió ellenőrzés
+        if snapshot.version > GraphSnapshot::CURRENT_VERSION {
+            tracing::warn!(
+                "Snapshot verzió ({}) újabb mint a támogatott ({})",
+                snapshot.version,
+                GraphSnapshot::CURRENT_VERSION
+            );
+        }
+
+        // Új gráf létrehozása és feltöltése
+        let graph = Self::new();
+        for block in snapshot.blocks {
+            graph.add(block)?;
+        }
+
+        tracing::info!(
+            "CodeGraph betöltve: {} ({} block, mentve: {})",
+            path.display(),
+            graph.len(),
+            snapshot.saved_at.format("%Y-%m-%d %H:%M:%S")
+        );
+
+        Ok(graph)
+    }
+
+    /// Gráf betöltése vagy új létrehozása ha nem létezik
+    ///
+    /// Ez a preferált módszer induláskor - ha van mentett állapot,
+    /// betölti, ha nincs, üres gráfot ad vissza.
+    pub fn load_or_new(path: &std::path::Path) -> Self {
+        match Self::load_from_disk(path) {
+            Ok(graph) => {
+                tracing::info!("Korábbi memória visszatöltve: {} block", graph.len());
+                graph
+            }
+            Err(e) => {
+                tracing::info!("Új gráf létrehozva ({})", e);
+                Self::new()
+            }
+        }
+    }
+
+    /// Automatikus mentés (háttérfolyamathoz)
+    pub fn auto_save(&self, path: &std::path::Path) -> HopeResult<()> {
+        // Backup készítés
+        let backup_path = path.with_extension("json.bak");
+        if path.exists() {
+            let _ = std::fs::copy(path, &backup_path);
+        }
+
+        self.save_to_disk(path)
+    }
+}
+
+// ============================================================================
 // TESTS
 // ============================================================================
 
@@ -1029,5 +1163,72 @@ mod tests {
         assert_eq!(stats.total_blocks, 3);
         assert_eq!(stats.type_counts.get(&BlockType::Memory), Some(&2));
         assert_eq!(stats.type_counts.get(&BlockType::Emotion), Some(&1));
+    }
+
+    #[test]
+    fn test_persistence_save_load() {
+        use std::path::Path;
+
+        let graph = CodeGraph::new();
+
+        // Emlékek és kapcsolatok létrehozása
+        let mem1 = graph.remember("Első emlék - fontos", 0.9).unwrap();
+        let mem2 = graph.remember("Második emlék", 0.5).unwrap();
+        let emo = graph.feel("joy", 0.8, Some("test")).unwrap();
+        graph.connect(&mem1, &emo, ConnectionType::TriggeredBy, 0.9);
+
+        // Mentés
+        let test_path = Path::new("test_persistence.json");
+        graph.save_to_disk(test_path).unwrap();
+
+        // Visszatöltés
+        let loaded = CodeGraph::load_from_disk(test_path).unwrap();
+
+        // Ellenőrzés
+        assert_eq!(loaded.len(), 3);
+        assert!(loaded.get(&mem1).is_some());
+        assert!(loaded.get(&mem2).is_some());
+        assert!(loaded.get(&emo).is_some());
+
+        // Kapcsolat megmaradt
+        let loaded_mem1 = loaded.get(&mem1).unwrap();
+        assert!(!loaded_mem1.connections.is_empty());
+
+        // Takarítás
+        let _ = std::fs::remove_file(test_path);
+    }
+
+    #[test]
+    fn test_load_or_new() {
+        use std::path::Path;
+
+        // Nem létező fájl -> új gráf
+        let graph = CodeGraph::load_or_new(Path::new("nonexistent_12345.json"));
+        assert!(graph.is_empty());
+
+        // Létező fájl -> betöltés
+        let test_path = Path::new("test_load_or_new.json");
+        let original = CodeGraph::new();
+        original.remember("Test", 0.5).unwrap();
+        original.save_to_disk(test_path).unwrap();
+
+        let loaded = CodeGraph::load_or_new(test_path);
+        assert_eq!(loaded.len(), 1);
+
+        // Takarítás
+        let _ = std::fs::remove_file(test_path);
+    }
+
+    #[test]
+    fn test_snapshot() {
+        let graph = CodeGraph::new();
+        graph.remember("Emlék", 0.7).unwrap();
+        graph.think("Gondolat", 0.5).unwrap();
+
+        let snapshot = graph.snapshot();
+
+        assert_eq!(snapshot.version, GraphSnapshot::CURRENT_VERSION);
+        assert_eq!(snapshot.blocks.len(), 2);
+        assert_eq!(snapshot.stats.total_blocks, 2);
     }
 }

@@ -23,6 +23,7 @@ pub mod skills;
 pub mod soul;
 pub mod swarm;
 pub mod templates;
+pub mod vision;
 pub mod voice;
 
 // Agents - Multi-agent koordináció
@@ -42,7 +43,10 @@ pub use code_dna::{
 };
 
 // Dream - Álom mód
-pub use dream::{Dream, DreamEngine, DreamSession, DreamStats, DreamType, SleepPhase};
+pub use dream::{
+    BackgroundConfig, BackgroundDreamer, ConsolidationResult, Dream, DreamCommand, DreamEngine,
+    DreamSession, DreamStats, DreamType, SleepPhase,
+};
 
 // Heart - Érzelmek
 pub use heart::{Emotion, EmotionalEvent, HopeHeart};
@@ -102,10 +106,15 @@ pub use consciousness::{
     QuantumCoherenceEngine, QuantumState,
 };
 
-// Pollinations - Vizuális memória
+// Pollinations - Vizuális memória (OUTPUT)
 pub use pollinations::{
     PollinationsClient, VisualAssociation, VisualMemory, VisualMemoryStats, VisualMemoryStore,
     VisualMemorySystem,
+};
+
+// Vision - Képfeldolgozás (INPUT) - Hope "szeme"
+pub use vision::{
+    ImageFormat, ImageMetadata, ImageSize, VisionEngine, VisionStats, VisualInput,
 };
 
 // Context Builder - Kontextus kezelés

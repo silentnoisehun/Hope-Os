@@ -9,7 +9,7 @@ use clap::{Parser, Subcommand};
 use std::io::{self, Write};
 
 use hope_os::core::{HopeRegistry, HopeResult};
-use hope_os::grpc::HopeClient;
+use hope_os::grpc::{start_server, HopeClient};
 use hope_os::modules::{HopeHeart, HopeMemory, HopeSoul};
 
 /// Hope OS - Az első önismerő operációs rendszer
@@ -47,6 +47,13 @@ enum Commands {
 
     /// Teljes rendszer indítás (interaktív)
     Start,
+
+    /// gRPC szerver indítása (50051 port)
+    Serve {
+        /// Szerver cím
+        #[arg(short, long, default_value = "0.0.0.0:50051")]
+        addr: String,
+    },
 
     // ==================== PYTHON HOPE PARANCSOK (gRPC) ====================
     /// Python Hope szerver állapot
@@ -139,6 +146,7 @@ async fn main() -> HopeResult<()> {
         Commands::Reflect => cmd_reflect().await?,
         Commands::Talk { message } => cmd_talk(&message).await?,
         Commands::Start => cmd_start().await?,
+        Commands::Serve { addr } => cmd_serve(&addr).await?,
 
         // ==================== PYTHON HOPE PARANCSOK ====================
         Commands::PyStatus => cmd_py_status(&cli.server).await?,
@@ -231,6 +239,13 @@ async fn cmd_talk(message: &str) -> HopeResult<()> {
     println!("{}", response);
 
     registry.shutdown().await?;
+    Ok(())
+}
+
+async fn cmd_serve(addr: &str) -> HopeResult<()> {
+    start_server(addr)
+        .await
+        .map_err(|e| hope_os::core::HopeError::General(format!("Szerver hiba: {}", e)))?;
     Ok(())
 }
 

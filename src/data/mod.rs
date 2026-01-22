@@ -11,7 +11,8 @@ pub mod neuroblast;
 
 // Re-export CodeGraph
 pub use code_graph::{
-    BlockState, BlockType, CodeBlock, CodeGraph, Connection, ConnectionType, GraphStats,
+    BlockState, BlockType, CodeBlock, CodeGraph, Connection, ConnectionType, GraphSnapshot,
+    GraphStats,
 };
 
 // Re-export NeuroBlast

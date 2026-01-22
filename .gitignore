@@ -79,6 +79,27 @@ tarpaulin-report.html
 /claude_hope/
 /claude_setup/
 
+# PWA (separate project)
+/pwa/
+pwa_server.py
+
+# Local memory snapshots
+hope_memory.json
+*.snapshot.json
+
+# Windows artifacts
+nul
+
+# Python
+python_client/venv/
+python_client/hope_pb2.py
+python_client/hope_pb2_grpc.py
+python_client/.env
+__pycache__/
+*.pyc
+*.pyo
+.Python
+
 # Generated files
 *.generated.*
 
