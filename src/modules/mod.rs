@@ -20,13 +20,13 @@ pub mod hebbian;
 pub mod memory;
 pub mod personality;
 pub mod pollinations;
+pub mod resonance;
 pub mod skills;
 pub mod soul;
 pub mod swarm;
 pub mod templates;
 pub mod vision;
 pub mod voice;
-pub mod resonance;
 
 // Agents - Multi-agent koordináció
 pub use agents::{

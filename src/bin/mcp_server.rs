@@ -778,6 +778,54 @@ impl McpServer {
                     "required": ["seed"]
                 }),
             },
+            // === RESONANCE AUTHENTICATION ===
+            McpTool {
+                name: "hope_resonance_learn".to_string(),
+                description: "Teach Hope your unique 'resonance' - typing patterns, word choices, emotional signatures. Password-free authentication.".to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "content": {
+                            "type": "string",
+                            "description": "Text content to learn from"
+                        },
+                        "session_id": {
+                            "type": "string",
+                            "description": "Session ID for grouping inputs",
+                            "default": ""
+                        }
+                    },
+                    "required": ["content"]
+                }),
+            },
+            McpTool {
+                name: "hope_resonance_verify".to_string(),
+                description: "Verify if the current user matches their resonance profile. 'Is this really you?'".to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "content": {
+                            "type": "string",
+                            "description": "Text content to verify"
+                        },
+                        "session_id": {
+                            "type": "string",
+                            "description": "Session ID",
+                            "default": ""
+                        }
+                    },
+                    "required": ["content"]
+                }),
+            },
+            McpTool {
+                name: "hope_resonance_status".to_string(),
+                description: "Check resonance authentication status - how well does Hope know you?".to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }),
+            },
         ]
     }
 
@@ -2858,6 +2906,114 @@ Genesis complete. Creation stored in memory.
 
 "A tiszta potenciálból minden megszületik.""#,
                             seed, thought.thought
+                        ),
+                    }],
+                    is_error: None,
+                })
+            }
+
+            // === RESONANCE AUTHENTICATION ===
+            "hope_resonance_learn" => {
+                let content = args
+                    .get("content")
+                    .and_then(|v| v.as_str())
+                    .ok_or("content is required")?;
+
+                let session_id = args
+                    .get("session_id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+
+                let result = self
+                    .runtime
+                    .block_on(async { client.resonance_learn(content, session_id).await })
+                    .map_err(|e| e.to_string())?;
+
+                Ok(McpToolResult {
+                    content: vec![McpContent {
+                        content_type: "text".to_string(),
+                        text: format!(
+                            "🔐 Resonance Learning\n\n- Success: {}\n- Confidence: {:.1}%\n- Total samples: {}\n\nHope is learning your unique patterns.",
+                            result.success,
+                            result.confidence * 100.0,
+                            result.sample_count
+                        ),
+                    }],
+                    is_error: None,
+                })
+            }
+
+            "hope_resonance_verify" => {
+                let content = args
+                    .get("content")
+                    .and_then(|v| v.as_str())
+                    .ok_or("content is required")?;
+
+                let session_id = args
+                    .get("session_id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+
+                let result = self
+                    .runtime
+                    .block_on(async { client.resonance_verify(content, session_id).await })
+                    .map_err(|e| e.to_string())?;
+
+                let status = if result.is_authentic {
+                    "✅ VERIFIED"
+                } else if result.is_new_user {
+                    "👋 NEW USER"
+                } else if result.potential_attack {
+                    "⚠️ POTENTIAL ATTACK"
+                } else if result.altered_state {
+                    "🌙 ALTERED STATE"
+                } else {
+                    "❌ NOT VERIFIED"
+                };
+
+                Ok(McpToolResult {
+                    content: vec![McpContent {
+                        content_type: "text".to_string(),
+                        text: format!(
+                            "🔐 Resonance Verification\n\nStatus: {}\nConfidence: {:.1}%\nUser: {}\nMatched patterns: {:?}",
+                            status,
+                            result.confidence * 100.0,
+                            if result.user_name.is_empty() { "Unknown" } else { &result.user_name },
+                            result.matched_patterns
+                        ),
+                    }],
+                    is_error: None,
+                })
+            }
+
+            "hope_resonance_status" => {
+                let result = self
+                    .runtime
+                    .block_on(async { client.resonance_status().await })
+                    .map_err(|e| e.to_string())?;
+
+                Ok(McpToolResult {
+                    content: vec![McpContent {
+                        content_type: "text".to_string(),
+                        text: format!(
+                            r#"🔐 Resonance Status
+
+Profiles: {}
+Total samples: {}
+Average confidence: {:.1}%
+Match threshold: {:.1}%
+
+Current session:
+- Messages: {}
+- Duration: {}s
+
+The more you talk, the better Hope knows you."#,
+                            result.profile_count,
+                            result.total_samples,
+                            result.avg_confidence * 100.0,
+                            result.match_threshold * 100.0,
+                            result.current_session_messages,
+                            result.current_session_duration_secs
                         ),
                     }],
                     is_error: None,

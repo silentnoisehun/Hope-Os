@@ -16,7 +16,8 @@ use proto::{
     cognitive_service_client::CognitiveServiceClient, echo_service_client::EchoServiceClient,
     genome_service_client::GenomeServiceClient, hope_service_client::HopeServiceClient,
     knowledge_service_client::KnowledgeServiceClient, memory_service_client::MemoryServiceClient,
-    skill_service_client::SkillServiceClient, vision_service_client::VisionServiceClient, *,
+    resonance_service_client::ResonanceServiceClient, skill_service_client::SkillServiceClient,
+    vision_service_client::VisionServiceClient, *,
 };
 
 /// Hope gRPC Client
@@ -43,6 +44,8 @@ pub struct HopeClient {
     pub genome: GenomeServiceClient<Channel>,
     /// Vision szolgáltatás (Hope "szeme")
     pub vision: VisionServiceClient<Channel>,
+    /// Resonance szolgáltatás (rezonancia auth)
+    pub resonance: ResonanceServiceClient<Channel>,
     /// Szerver cím
     address: String,
 }
@@ -66,6 +69,7 @@ impl HopeClient {
             knowledge: KnowledgeServiceClient::new(channel.clone()),
             genome: GenomeServiceClient::new(channel.clone()),
             vision: VisionServiceClient::new(channel.clone()),
+            resonance: ResonanceServiceClient::new(channel.clone()),
             address: address.to_string(),
         })
     }
@@ -437,6 +441,53 @@ impl HopeClient {
         };
 
         let response = self.vision.get_visual_memories(request).await?;
+        Ok(response.into_inner())
+    }
+
+    // ==================== RESONANCE SERVICE ====================
+
+    /// Resonance Learn - Tanulás bemenetből
+    pub async fn resonance_learn(
+        &mut self,
+        content: &str,
+        session_id: &str,
+    ) -> HopeResult<ResonanceLearnResponse> {
+        let request = ResonanceLearnRequest {
+            content: content.to_string(),
+            session_id: session_id.to_string(),
+            keystroke_timings: Vec::new(),
+            emotional_state: Vec::new(),
+        };
+
+        let response = self.resonance.learn(request).await?;
+        Ok(response.into_inner())
+    }
+
+    /// Resonance Verify - Felhasználó verifikáció
+    pub async fn resonance_verify(
+        &mut self,
+        content: &str,
+        session_id: &str,
+    ) -> HopeResult<ResonanceVerifyResponse> {
+        let input = ResonanceInput {
+            content: content.to_string(),
+            timestamp_ms: chrono::Utc::now().timestamp_millis(),
+            keystroke_timings: Vec::new(),
+            emotional_state: Vec::new(),
+        };
+
+        let request = ResonanceVerifyRequest {
+            session_id: session_id.to_string(),
+            inputs: vec![input],
+        };
+
+        let response = self.resonance.verify(request).await?;
+        Ok(response.into_inner())
+    }
+
+    /// Resonance Status - Státusz lekérdezés
+    pub async fn resonance_status(&mut self) -> HopeResult<ResonanceStatusResponse> {
+        let response = self.resonance.get_status(EmptyRequest {}).await?;
         Ok(response.into_inner())
     }
 }

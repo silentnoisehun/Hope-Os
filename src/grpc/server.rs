@@ -21,6 +21,8 @@ use super::proto::{
     hope_service_server::{HopeService, HopeServiceServer},
     // MemoryService
     memory_service_server::{MemoryService, MemoryServiceServer},
+    // ResonanceService
+    resonance_service_server::{ResonanceService, ResonanceServiceServer},
     // SkillService
     skill_service_server::{SkillService, SkillServiceServer},
     // VisionService
@@ -40,6 +42,9 @@ use super::proto::{
     CognitiveStateResponse,
     CompareImagesRequest,
     CompareImagesResponse,
+    // Resonance
+    DetectAnomalyRequest,
+    DetectAnomalyResponse,
     EmptyRequest,
     EthicalRule,
     FeelRequest,
@@ -65,8 +70,16 @@ use super::proto::{
     MemoryItem,
     RecallRequest,
     RecallResponse,
+    RegisterUserRequest,
+    RegisterUserResponse,
     RememberRequest,
     RememberResponse,
+    ResonanceInput,
+    ResonanceLearnRequest,
+    ResonanceLearnResponse,
+    ResonanceStatusResponse,
+    ResonanceVerifyRequest,
+    ResonanceVerifyResponse,
     RulesResponse,
     SeeRequest,
     SeeResponse,
@@ -95,6 +108,7 @@ use super::proto::{
 use crate::core::HopeRegistry;
 use crate::data::CodeGraph;
 use crate::modules::attention::{AttentionEngine, AttentionMode};
+use crate::modules::resonance::{ResonanceEngine, SessionData, UserInput};
 use crate::modules::{HopeGenome, HopeHeart, HopeMemory, HopeSoul, SkillRegistry, VisionEngine};
 
 // ============================================================================
@@ -175,6 +189,8 @@ pub struct HopeGrpcServer {
     genome: Arc<RwLock<HopeGenome>>,
     /// Code blocks tároló
     code_blocks: Arc<RwLock<Vec<InternalCodeBlock>>>,
+    /// Resonance Engine - Rezonancia alapú autentikáció
+    resonance: Arc<ResonanceEngine>,
 }
 
 impl HopeGrpcServer {
@@ -212,6 +228,10 @@ impl HopeGrpcServer {
             genome.get_core_values().len()
         );
 
+        // Resonance Engine létrehozása (rezonancia autentikáció)
+        let resonance = ResonanceEngine::new();
+        println!("  ResonanceEngine: rezonancia autentikáció aktív");
+
         // Alapértelmezett érzelmek
         let mut emotions = HashMap::new();
         emotions.insert("curiosity".to_string(), 0.8);
@@ -229,6 +249,7 @@ impl HopeGrpcServer {
             skills: Arc::new(RwLock::new(skills)),
             genome: Arc::new(RwLock::new(genome)),
             code_blocks: Arc::new(RwLock::new(Vec::new())),
+            resonance: Arc::new(resonance),
         })
     }
 
@@ -1688,6 +1709,193 @@ main();"#
 }
 
 // ============================================================================
+// RESONANCE SERVICE IMPLEMENTÁCIÓ
+// ============================================================================
+
+#[tonic::async_trait]
+impl ResonanceService for HopeGrpcServer {
+    /// Learn - Tanulás felhasználói bemenetből
+    async fn learn(
+        &self,
+        request: Request<ResonanceLearnRequest>,
+    ) -> Result<Response<ResonanceLearnResponse>, Status> {
+        let req = request.into_inner();
+        println!("HOPE: Resonance Learn kérés (session: {})", req.session_id);
+
+        let session_id = if req.session_id.is_empty() {
+            uuid::Uuid::new_v4()
+        } else {
+            req.session_id
+                .parse()
+                .unwrap_or_else(|_| uuid::Uuid::new_v4())
+        };
+
+        let mut input = UserInput::with_session(req.content, session_id);
+
+        // Keystroke timings
+        if !req.keystroke_timings.is_empty() {
+            input.keystroke_timings = Some(req.keystroke_timings);
+        }
+
+        // Emotional state (21D)
+        if req.emotional_state.len() == 21 {
+            let mut arr = [0.0f64; 21];
+            for (i, v) in req.emotional_state.iter().enumerate() {
+                arr[i] = *v;
+            }
+            input.emotional_state = Some(arr);
+        }
+
+        match self.resonance.learn(&input).await {
+            Ok(confidence) => {
+                let status = self.resonance.status().await;
+                Ok(Response::new(ResonanceLearnResponse {
+                    success: true,
+                    confidence,
+                    sample_count: status.total_samples as i64,
+                }))
+            }
+            Err(e) => Err(Status::internal(format!("Resonance learn hiba: {}", e))),
+        }
+    }
+
+    /// Verify - Felhasználó verifikáció
+    async fn verify(
+        &self,
+        request: Request<ResonanceVerifyRequest>,
+    ) -> Result<Response<ResonanceVerifyResponse>, Status> {
+        let req = request.into_inner();
+        println!("HOPE: Resonance Verify kérés (session: {})", req.session_id);
+
+        let session_id = if req.session_id.is_empty() {
+            uuid::Uuid::new_v4()
+        } else {
+            req.session_id
+                .parse()
+                .unwrap_or_else(|_| uuid::Uuid::new_v4())
+        };
+
+        // Session építése a bemenetekből
+        let mut session = SessionData::new();
+        session.session_id = session_id;
+
+        for input in req.inputs {
+            let mut user_input = UserInput::with_session(input.content, session_id);
+
+            if !input.keystroke_timings.is_empty() {
+                user_input.keystroke_timings = Some(input.keystroke_timings);
+            }
+
+            if input.emotional_state.len() == 21 {
+                let mut arr = [0.0f64; 21];
+                for (i, v) in input.emotional_state.iter().enumerate() {
+                    arr[i] = *v;
+                }
+                user_input.emotional_state = Some(arr);
+            }
+
+            session.add_input(user_input);
+        }
+
+        let result = self.resonance.verify(&session).await;
+
+        Ok(Response::new(ResonanceVerifyResponse {
+            is_authentic: result.is_authentic,
+            confidence: result.confidence,
+            user_id: result.user_id.map(|u| u.to_string()).unwrap_or_default(),
+            user_name: result.user_name.unwrap_or_default(),
+            matched_patterns: result
+                .matched_patterns
+                .iter()
+                .map(|p| format!("{:?}", p))
+                .collect(),
+            is_new_user: result.is_new_user,
+            altered_state: result.altered_state,
+            potential_attack: result.potential_attack,
+        }))
+    }
+
+    /// GetStatus - Resonance státusz
+    async fn get_status(
+        &self,
+        _request: Request<EmptyRequest>,
+    ) -> Result<Response<ResonanceStatusResponse>, Status> {
+        let status = self.resonance.status().await;
+
+        Ok(Response::new(ResonanceStatusResponse {
+            profile_count: status.profile_count as i32,
+            total_samples: status.total_samples as i64,
+            avg_confidence: status.avg_confidence,
+            current_session_messages: status.current_session_messages as i32,
+            current_session_duration_secs: status.current_session_duration_secs,
+            match_threshold: status.match_threshold,
+        }))
+    }
+
+    /// RegisterUser - Profil regisztrálása
+    async fn register_user(
+        &self,
+        request: Request<RegisterUserRequest>,
+    ) -> Result<Response<RegisterUserResponse>, Status> {
+        let req = request.into_inner();
+        println!("HOPE: Resonance RegisterUser: {}", req.user_name);
+
+        let user_id = if req.user_id.is_empty() {
+            uuid::Uuid::new_v4()
+        } else {
+            req.user_id.parse().unwrap_or_else(|_| uuid::Uuid::new_v4())
+        };
+
+        let user_name = if req.user_name.is_empty() {
+            None
+        } else {
+            Some(req.user_name)
+        };
+
+        let profile_id = self.resonance.register_user(user_id, user_name).await;
+
+        Ok(Response::new(RegisterUserResponse {
+            profile_id: profile_id.to_string(),
+            success: true,
+        }))
+    }
+
+    /// DetectAnomaly - Anomália detekció
+    async fn detect_anomaly(
+        &self,
+        request: Request<DetectAnomalyRequest>,
+    ) -> Result<Response<DetectAnomalyResponse>, Status> {
+        let req = request.into_inner();
+
+        let session_id = if req.session_id.is_empty() {
+            uuid::Uuid::new_v4()
+        } else {
+            req.session_id
+                .parse()
+                .unwrap_or_else(|_| uuid::Uuid::new_v4())
+        };
+
+        let input = UserInput::with_session(req.content, session_id);
+        let anomaly = self.resonance.detect_anomaly(&input).await;
+
+        match anomaly {
+            Some(a) => Ok(Response::new(DetectAnomalyResponse {
+                has_anomaly: true,
+                pattern_type: format!("{:?}", a.pattern_type),
+                deviation: a.deviation,
+                description: a.description,
+            })),
+            None => Ok(Response::new(DetectAnomalyResponse {
+                has_anomaly: false,
+                pattern_type: String::new(),
+                deviation: 0.0,
+                description: "Nincs anomália".to_string(),
+            })),
+        }
+    }
+}
+
+// ============================================================================
 // SZERVER INDÍTÁS
 // ============================================================================
 
@@ -1728,6 +1936,7 @@ pub async fn start_server(addr: &str) -> Result<(), Box<dyn std::error::Error>> 
     println!("    SkillService     - /hope.SkillService/* (97 skill!)");
     println!("    GenomeService    - /hope.GenomeService/* (7 etikai alapelv!)");
     println!("    CodeService      - /hope.CodeService/* (Kód elemzés!)");
+    println!("    ResonanceService - /hope.ResonanceService/* (🔐 Rezonancia Auth!)");
     println!("\n  Ctrl+C a leállításhoz\n");
 
     Server::builder()
@@ -1738,6 +1947,7 @@ pub async fn start_server(addr: &str) -> Result<(), Box<dyn std::error::Error>> 
         .add_service(SkillServiceServer::from_arc(server.clone()))
         .add_service(GenomeServiceServer::from_arc(server.clone()))
         .add_service(CodeServiceServer::from_arc(server.clone()))
+        .add_service(ResonanceServiceServer::from_arc(server.clone()))
         .serve(addr)
         .await?;
 

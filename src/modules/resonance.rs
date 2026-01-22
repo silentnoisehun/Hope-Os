@@ -340,7 +340,12 @@ impl ResonanceMatch {
     }
 
     /// Sikeres egyezés
-    pub fn success(user_id: Uuid, user_name: Option<String>, confidence: f64, patterns: Vec<PatternType>) -> Self {
+    pub fn success(
+        user_id: Uuid,
+        user_name: Option<String>,
+        confidence: f64,
+        patterns: Vec<PatternType>,
+    ) -> Self {
         Self {
             user_id: Some(user_id),
             user_name,
@@ -438,7 +443,9 @@ impl ResonanceEngine {
         let content = &input.content;
 
         // Mondat hossz
-        let sentences: Vec<&str> = content.split(|c| c == '.' || c == '!' || c == '?').collect();
+        let sentences: Vec<&str> = content
+            .split(|c| c == '.' || c == '!' || c == '?')
+            .collect();
         let avg_len = if sentences.is_empty() {
             0.0
         } else {
@@ -446,15 +453,14 @@ impl ResonanceEngine {
         };
         profile.sentence_length_avg =
             (profile.sentence_length_avg * (profile.sample_count - 1) as f64 + avg_len)
-            / profile.sample_count as f64;
+                / profile.sample_count as f64;
 
         // Írásjelek
         let char_count = content.len() as f64;
         if char_count > 0.0 {
             profile.punctuation_style.period_freq =
                 content.matches('.').count() as f64 / char_count;
-            profile.punctuation_style.comma_freq =
-                content.matches(',').count() as f64 / char_count;
+            profile.punctuation_style.comma_freq = content.matches(',').count() as f64 / char_count;
             profile.punctuation_style.exclamation_freq =
                 content.matches('!').count() as f64 / char_count;
             profile.punctuation_style.question_freq =
@@ -483,15 +489,18 @@ impl ResonanceEngine {
             profile.typing_rhythm.extend(timings.iter().cloned());
             // Csak az utolsó 1000 mintát tartjuk meg
             if profile.typing_rhythm.len() > 1000 {
-                profile.typing_rhythm = profile.typing_rhythm.split_off(profile.typing_rhythm.len() - 1000);
+                profile.typing_rhythm = profile
+                    .typing_rhythm
+                    .split_off(profile.typing_rhythm.len() - 1000);
             }
         }
 
         // Érzelmi állapot
         if let Some(emotions) = &input.emotional_state {
             for i in 0..21 {
-                profile.emotional_baseline[i] =
-                    (profile.emotional_baseline[i] * (profile.sample_count - 1) as f64 + emotions[i])
+                profile.emotional_baseline[i] = (profile.emotional_baseline[i]
+                    * (profile.sample_count - 1) as f64
+                    + emotions[i])
                     / profile.sample_count as f64;
             }
         }
@@ -686,8 +695,10 @@ impl ResonanceEngine {
             return 0.5; // Nincs adat, semleges
         }
 
-        let profile_avg: f64 = profile.typing_rhythm.iter().sum::<f64>() / profile.typing_rhythm.len() as f64;
-        let current_avg: f64 = current.typing_rhythm.iter().sum::<f64>() / current.typing_rhythm.len() as f64;
+        let profile_avg: f64 =
+            profile.typing_rhythm.iter().sum::<f64>() / profile.typing_rhythm.len() as f64;
+        let current_avg: f64 =
+            current.typing_rhythm.iter().sum::<f64>() / current.typing_rhythm.len() as f64;
 
         let diff = (profile_avg - current_avg).abs();
         let max_diff = profile_avg.max(current_avg);
@@ -813,12 +824,14 @@ impl ResonanceEngine {
             }
 
             // Ellenőrizzük a szóhasználatot
-            let words: std::collections::HashSet<_> = input.content
+            let words: std::collections::HashSet<_> = input
+                .content
                 .split_whitespace()
                 .map(|w| w.to_lowercase())
                 .collect();
 
-            let known_words: std::collections::HashSet<_> = profile.word_frequency.keys().cloned().collect();
+            let known_words: std::collections::HashSet<_> =
+                profile.word_frequency.keys().cloned().collect();
             let new_words = words.difference(&known_words).count();
 
             if profile.sample_count > 50 && new_words as f64 / words.len().max(1) as f64 > 0.7 {
@@ -894,7 +907,6 @@ pub struct ResonanceStatus {
     pub current_session_duration_secs: i64,
     pub match_threshold: f64,
 }
-
 
 // === Tesztek ===
 
@@ -1005,7 +1017,9 @@ mod tests {
         let engine = ResonanceEngine::new();
         let user_id = Uuid::new_v4();
 
-        let profile_id = engine.register_user(user_id, Some("TestUser".to_string())).await;
+        let profile_id = engine
+            .register_user(user_id, Some("TestUser".to_string()))
+            .await;
 
         let profile = engine.get_profile(profile_id).await;
         assert!(profile.is_some());
@@ -1043,10 +1057,7 @@ mod tests {
         let session_id = Uuid::new_v4();
 
         for i in 0..10 {
-            let input = UserInput::with_session(
-                format!("Ez a {} teszt üzenet.", i),
-                session_id,
-            );
+            let input = UserInput::with_session(format!("Ez a {} teszt üzenet.", i), session_id);
             engine.learn(&input).await.unwrap();
         }
 
