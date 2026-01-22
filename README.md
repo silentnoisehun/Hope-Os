@@ -655,7 +655,7 @@ hope-os/
 │   │   ├── code_graph.rs       # The graph + persistence (save/load)
 │   │   └── neuroblast.rs       # Neural wave propagation
 │   │
-│   ├── modules/                # 24 cognitive modules
+│   ├── modules/                # 28 cognitive modules
 │   │   ├── attention.rs        # NEW: Focus/attention management
 │   │   ├── vision.rs           # Multimodal vision engine
 │   │   ├── dream.rs            # ENHANCED: Background dreamer + Diffuse mode
