@@ -1,3 +1,7 @@
+<!-- badges:start -->
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22983511.svg)](https://doi.org/10.5281/zenodo.22983511)
+[![ORCID iD](https://img.shields.io/badge/ORCID-0009--0003--3986--6039-green)](https://orcid.org/0009-0003-3986-6039)
+<!-- badges:end -->
 <p align="center">
   <img src="docs/hope-logo.svg" alt="Hope OS" width="200"/>
 </p>
